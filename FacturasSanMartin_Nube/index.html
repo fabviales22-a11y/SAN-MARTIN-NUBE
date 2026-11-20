@@ -1,0 +1,2465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facturas San Martín</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="shortcut icon" href="icon.ico">
+<link rel="apple-touch-icon" href="icon.png">
+<script src="sql-wasm.js"></script>
+<script src="xlsx.full.min.js"></script>
+<style>
+  :root{
+    --azul900:#0B2545; --azul800:#13315C; --azul700:#134074;
+    --azul600:#1B5299; --azul500:#2E75B6; --azul300:#8AB6E0;
+    --azul100:#DCE9F7; --azul050:#F2F7FC; --gris:#5A6874;
+    --grisclr:#EEF2F6; --verde:#1E8449; --verdeclr:#E3F2E6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--azul050);color:var(--azul800);
+       font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{background:linear-gradient(135deg,var(--azul900),var(--azul700));
+         padding:20px 26px;display:flex;align-items:center;gap:18px}
+  .logo{width:72px;height:72px;background:#fff;border-radius:15px;flex:0 0 auto;
+        display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.22)}
+  .logo img{width:58px;height:58px;object-fit:contain}
+  .marca h1{margin:0;color:#fff;font-size:21px;letter-spacing:.4px}
+  .marca p{margin:4px 0 0;color:var(--azul300);font-size:12.5px}
+
+  .buscador{background:var(--azul100);padding:18px 26px 12px}
+  .buscador label{display:block;font-weight:700;font-size:13px;color:var(--azul800);margin-bottom:8px}
+  .campo{display:flex;gap:9px;flex-wrap:wrap}
+  .envuelve{position:relative;flex:1 1 300px}
+  .caja{display:flex;align-items:center;background:#fff;border:2px solid var(--azul500);
+        border-radius:10px;padding:0 13px}
+  .caja svg{flex:0 0 auto;margin-right:9px}
+  input[type=text]{flex:1;border:0;outline:0;font-size:16.5px;padding:13px 0;
+        font-family:Consolas,"Courier New",monospace;color:var(--azul800);background:transparent}
+  button{border:0;border-radius:10px;cursor:pointer;font-weight:700;font-size:13.5px;
+         padding:13px 22px;color:#fff;background:var(--azul600);transition:background .15s}
+  button:hover{background:var(--azul700)}
+  button.sec{background:var(--azul500);padding:13px 16px}
+  button.sec:hover{background:var(--azul600)}
+  button.nuevo{background:#1E8449;padding:13px 18px}
+  button.nuevo:hover{background:#166638}
+  button.chip{border:1.5px solid var(--azul300);background:#fff;color:var(--azul700);
+         border-radius:20px;padding:7px 14px;font-size:12.5px;display:inline-flex;
+         align-items:center;gap:6px;font-weight:700}
+  button.chip:hover{border-color:var(--azul500);background:var(--azul050)}
+  button.chip.on{background:var(--azul600);border-color:var(--azul600);color:#fff}
+  button.chip .n{background:var(--azul100);color:var(--azul700);border-radius:9px;
+         padding:1px 6px;font-size:11px;font-weight:800}
+  button.chip.on .n{background:rgba(255,255,255,.28);color:#fff}
+  button.chip.apagado{opacity:.45;cursor:not-allowed}
+  button.mini{border-radius:8px;padding:6px 11px;font-size:11.5px;
+         background:var(--azul500)}
+  button.mini:hover{background:var(--azul600)}
+  button.mini.rojo{background:#C0392B}
+  button.mini.rojo:hover{background:#96291d}
+  button.mini.neutro{background:#F2F7FC;border:1px solid #C7D6E6;color:var(--azul700)}
+  button.mini.neutro:hover{background:#E4EFF9}
+  button.mini.verde{background:#1E8449}
+  button.mini.verde:hover{background:#166638}
+
+  .filtros{background:var(--azul100);padding:0 26px 13px;display:flex;gap:8px;
+        flex-wrap:wrap;align-items:center}
+  .filtros .rotulo{font-size:11px;font-weight:700;color:var(--azul800);
+        text-transform:uppercase;letter-spacing:.4px;margin-right:3px}
+  .filtros .sep{width:1px;height:22px;background:var(--azul300);margin:0 3px}
+  .rango{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--azul800);font-weight:700}
+  .rango input{border:1.5px solid var(--azul300);border-radius:9px;padding:6px 8px;
+        font-size:12.5px;font-family:inherit;color:var(--azul800);background:#fff;width:62px}
+  .estado{padding:0 26px 13px;background:var(--azul100);color:var(--azul700);font-size:13px}
+  .estado b{color:var(--azul900)}
+
+  main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:18px 26px 30px;align-items:start}
+  @media(max-width:900px){ main{grid-template-columns:1fr} }
+  .panel{background:#fff;border:1px solid var(--azul100);border-radius:14px;overflow:hidden;
+         box-shadow:0 2px 10px rgba(11,37,69,.06)}
+  .panel h2{margin:0;background:var(--azul700);color:#fff;font-size:14.5px;padding:13px 17px;font-weight:700}
+  .panel.imagen h2{background:var(--azul500)}
+  .datos{padding:6px 17px 14px}
+  .fila{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid var(--grisclr)}
+  .fila:last-child{border-bottom:0}
+  .fila span:first-child{color:var(--gris);font-size:11.5px;font-weight:700;
+        text-transform:uppercase;letter-spacing:.3px}
+  .fila span:last-child{font-size:14.5px;font-weight:600;text-align:right}
+  .total{background:var(--verdeclr);color:var(--verde);font-size:18px;font-weight:800;
+        padding:14px 17px;text-align:right}
+  .lienzo{min-height:260px;display:flex;align-items:center;justify-content:center;padding:13px}
+  .lienzo img{max-width:100%;border-radius:8px;box-shadow:0 2px 10px rgba(11,37,69,.14)}
+  .vacio{color:var(--azul300);font-size:13.5px;text-align:center;line-height:1.7}
+  .acciones-ficha{display:flex;gap:8px;flex-wrap:wrap;padding:11px 17px 14px;background:#F7FAFD}
+  .lista{display:none;position:absolute;background:#fff;border:1px solid var(--azul500);
+        border-radius:10px;box-shadow:0 8px 24px rgba(11,37,69,.2);max-height:260px;
+        overflow:auto;z-index:50;margin-top:6px;left:0;right:0}
+  .lista div{padding:9px 13px;font-size:12.5px;cursor:pointer;font-family:Consolas,monospace}
+  .lista div:hover{background:var(--azul100)}
+
+  .resumen-filtro{background:#fff;border:1px solid var(--azul100);border-radius:14px;
+        margin:0 26px 18px;overflow:hidden;display:none}
+  .resumen-filtro h3{margin:0;background:var(--azul800);color:#fff;font-size:14px;
+        padding:12px 17px;display:flex;justify-content:space-between;align-items:center;
+        flex-wrap:wrap;gap:8px}
+  .resumen-filtro h3 button{font-size:12px;padding:7px 12px;border-radius:8px;
+        background:rgba(255,255,255,.16)}
+  .resumen-filtro h3 button:hover{background:rgba(255,255,255,.3)}
+  .totales-filtro{display:flex;gap:20px;flex-wrap:wrap;padding:13px 17px 5px}
+  .totales-filtro div{font-size:11.5px;color:var(--gris)}
+  .totales-filtro b{display:block;font-size:16.5px;color:var(--azul800);font-weight:800;margin-top:2px}
+  .totales-filtro .plata b{color:var(--verde)}
+  .lista-mini{padding:7px 17px 14px}
+  .lista-mini table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .lista-mini th{text-align:left;color:var(--azul800);font-size:10.5px;
+        text-transform:uppercase;letter-spacing:.4px;padding:7px 9px;border-bottom:1px solid var(--azul100)}
+  .lista-mini td{padding:6px 9px;border-bottom:1px solid var(--grisclr);font-family:Consolas,monospace}
+  .lista-mini td.cli{font-family:inherit}
+  .lista-mini tr{cursor:pointer}
+  .lista-mini tr:hover td{background:var(--azul050)}
+  .lista-mini .num{text-align:right}
+  .mas{font-size:12px;color:var(--gris);padding:8px 17px 0}
+
+  .nuevas{margin:0 26px 30px;background:#fff;border:1px solid var(--azul100);
+        border-radius:14px;overflow:hidden}
+  .nuevas h2{margin:0;background:#1E8449;color:#fff;font-size:14.5px;padding:13px 17px}
+  .barra-nuevas{display:flex;gap:9px;padding:11px 17px;background:var(--azul050);flex-wrap:wrap}
+  .nuevas table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .nuevas th{background:var(--azul050);color:var(--azul800);text-align:left;padding:9px 13px;
+        font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--azul100)}
+  .nuevas td{padding:9px 13px;border-bottom:1px solid var(--grisclr);font-family:Consolas,monospace}
+  .nuevas td.cli{font-family:inherit}
+  .nuevas tr:last-child td{border-bottom:0}
+  .acciones-fila{display:flex;gap:7px;align-items:center}
+
+  .fondo{display:none;position:fixed;inset:0;background:rgba(11,37,69,.55);z-index:100;
+        align-items:flex-start;justify-content:center;overflow:auto;padding:24px 13px}
+  .fondo.abierto{display:flex}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:830px;overflow:hidden;
+        box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  .modal h2{margin:0;background:var(--azul900);color:#fff;font-size:16.5px;padding:15px 21px;
+        display:flex;justify-content:space-between;align-items:center}
+  .modal h2 button{background:transparent;color:#fff;font-size:20px;padding:0 6px;line-height:1}
+  .modal h2 button:hover{background:rgba(255,255,255,.15)}
+  .cuerpo-modal{padding:19px 21px 5px}
+  .rejilla{display:grid;grid-template-columns:1fr 1fr;gap:13px 17px}
+  @media(max-width:640px){ .rejilla{grid-template-columns:1fr} }
+  .campo-form label{display:block;font-size:11.5px;font-weight:700;color:var(--gris);
+        margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
+  .campo-form input,.campo-form select{width:100%;border:1.5px solid #C7D6E6;border-radius:9px;
+        padding:10px 12px;font-size:14.5px;font-family:inherit;color:var(--azul800);background:#fff}
+  .campo-form input:focus,.campo-form select:focus{outline:0;border-color:var(--azul500);
+        box-shadow:0 0 0 3px var(--azul100)}
+  .campo-form input.mono{font-family:Consolas,monospace}
+  .pista{font-size:11px;color:var(--gris);margin-top:4px}
+  .aviso{margin:15px 21px 0;padding:11px 13px;border-radius:10px;font-size:13.5px;display:none}
+  .aviso.ok{display:block;background:var(--verdeclr);color:var(--verde);border:1px solid #B7DEC0}
+  .aviso.err{display:block;background:#FDECEC;color:#B03A3A;border:1px solid #F3C6C6}
+  .pie-modal{display:flex;gap:9px;justify-content:flex-end;padding:15px 21px 19px;
+        border-top:1px solid var(--grisclr);margin-top:15px;flex-wrap:wrap}
+  .pie-modal button{font-size:13.5px;padding:11px 20px}
+  .pie-modal .gris{background:#6B7A88}
+  .pie-modal .verde{background:#1E8449}
+  .pie-modal .verde:hover{background:#166638}
+  .pie-modal .gris:hover{background:#55626E}
+  .soltar{border:2px dashed #8AB6E0;border-radius:13px;padding:22px;text-align:center;background:#F2F7FC}
+  .soltar .icono{font-size:30px;line-height:1}
+  .soltar .titulo-soltar{margin:9px 0 12px;color:#134074;font-weight:700}
+  .zona-img{margin-top:2px}
+  .soltar-img{border:2px dashed #8AB6E0;border-radius:11px;padding:13px;background:#F2F7FC;
+        text-align:center;font-size:12.5px;color:#134074}
+  .vista-img{display:flex;gap:13px;align-items:flex-start;border:1.5px solid #C7D6E6;
+        border-radius:11px;padding:10px;background:#fff}
+  .vista-img img{max-width:160px;max-height:140px;border-radius:8px;border:1px solid #DCE9F7}
+  .acciones-img{display:flex;flex-direction:column;gap:7px}
+  .aviso-export{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+        background:var(--azul900);color:#fff;padding:12px 20px;border-radius:11px;
+        font-size:13.5px;box-shadow:0 8px 26px rgba(0,0,0,.3);z-index:200;display:none}
+
+  /* ══ pantalla de inicio ══ */
+  #pantallaInicio{
+    min-height:100vh;background:linear-gradient(160deg,#0B2545 0%,#134074 55%,#1B5299 100%);
+    display:flex;align-items:center;justify-content:center;padding:34px 20px
+  }
+  .portada{text-align:center;max-width:880px;width:100%}
+  .portada-logo{
+    width:118px;height:118px;background:#fff;border-radius:26px;margin:0 auto 20px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 14px 40px rgba(0,0,0,.35)
+  }
+  .portada-logo img{width:96px;height:96px;object-fit:contain}
+  .portada-titulo{
+    margin:0;color:#fff;font-size:31px;letter-spacing:1.5px;font-weight:800
+  }
+  .portada-sub{margin:9px 0 34px;color:#8AB6E0;font-size:14.5px}
+  .sucursales{
+    display:grid;grid-template-columns:1fr 1fr;gap:20px
+  }
+  @media(max-width:720px){ .sucursales{grid-template-columns:1fr} }
+  .sucursal{
+    background:rgba(255,255,255,.07);border:2px solid rgba(138,182,224,.42);
+    border-radius:18px;padding:32px 24px 26px;cursor:pointer;color:#fff;
+    display:flex;flex-direction:column;align-items:center;gap:9px;
+    transition:all .18s;font-family:inherit;text-align:center
+  }
+  .sucursal:hover{
+    background:rgba(255,255,255,.15);border-color:#fff;transform:translateY(-3px);
+    box-shadow:0 16px 38px rgba(0,0,0,.34)
+  }
+  .sucursal-icono{font-size:44px;line-height:1}
+  .sucursal-nombre{font-size:20px;font-weight:800;letter-spacing:.8px}
+  .sucursal-datos{font-size:12.5px;color:#8AB6E0;line-height:1.5}
+  .sucursal-entrar{
+    margin-top:9px;background:#1E8449;padding:10px 30px;border-radius:11px;
+    font-size:13.5px;font-weight:800;letter-spacing:.5px
+  }
+  .sucursal:hover .sucursal-entrar{background:#166638}
+  .portada-nota{margin:30px 0 0;color:#8AB6E0;font-size:12.5px;line-height:1.7}
+
+  /* marca de sucursal dentro del buscador */
+  .marca .sucursal-actual{
+    display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.16);
+    padding:4px 11px;border-radius:20px;margin-top:7px;font-size:11.5px;
+    color:#DCE9F7;font-weight:700
+  }
+  button.volver{
+    background:rgba(255,255,255,.18);color:#fff;padding:9px 15px;border-radius:9px;
+    font-size:12.5px
+  }
+  button.volver:hover{background:rgba(255,255,255,.3)}
+  footer{text-align:center;color:var(--gris);font-size:12px;padding:0 20px 26px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ PANTALLA DE INICIO ══════════════════ -->
+<section id="pantallaInicio">
+  <div class="portada">
+    <div class="portada-logo"><img id="logoInicio" src="data:image/png;base64,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" alt="Carnes San Martín"></div>
+    <h1 class="portada-titulo">SISTEMA DE FACTURAS</h1>
+    <p class="portada-sub">Carnes San Martín · elija la sucursal</p>
+
+    <div class="sucursales">
+      <button class="sucursal" onclick="entrarSucursal('TIENDA SOLARIUM')">
+        <span class="sucursal-icono">&#127978;</span>
+        <span class="sucursal-nombre">TIENDA SOLARIUM</span>
+        <span class="sucursal-datos" id="datosTienda">—</span>
+        <span class="sucursal-entrar">Entrar</span>
+      </button>
+      <button class="sucursal" onclick="entrarSucursal('CEDI LIBERIA')">
+        <span class="sucursal-icono">&#127981;</span>
+        <span class="sucursal-nombre">CEDI LIBERIA</span>
+        <span class="sucursal-datos" id="datosCedi">—</span>
+        <span class="sucursal-entrar">Entrar</span>
+      </button>
+    </div>
+
+    <p class="portada-nota">
+      Cada sucursal tiene su propio buscador, sus facturas y sus ingresos.
+      Dentro puede cambiar de sucursal cuando quiera.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ BUSCADOR (una sucursal) ══════════════════ -->
+<section id="pantallaBuscador" style="display:none">
+
+
+<header>
+  <div class="logo"><img id="logoImg" src="data:image/png;base64,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" alt="Carnes San Martín"></div>
+  <div class="marca">
+    <h1 id="tituloSucursal">BUSCADOR DE FACTURAS</h1>
+    <p>Carnes San Martín · facturas con descuento</p>
+    <span class="sucursal-actual" id="etiquetaSucursal">—</span>
+  </div>
+  <div style="margin-left:auto">
+    <button class="volver" onclick="volverInicio()">&#8592; Cambiar de sucursal</button>
+  </div>
+</header>
+
+<section class="buscador">
+  <label for="q">Escriba el número de factura, el documento o el nombre del cliente:</label>
+  <div class="campo">
+    <div class="envuelve">
+      <div class="caja">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E75B6"
+             stroke-width="2.4" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+        </svg>
+        <input type="text" id="q" autocomplete="off" autofocus
+               placeholder="Ej.: 00300001010000014947   ·   14947   ·   FERNANDO">
+      </div>
+      <div class="lista" id="lista"></div>
+    </div>
+    <button onclick="buscar()">BUSCAR</button>
+    <button class="sec" onclick="limpiar()">Limpiar</button>
+    <button class="nuevo" onclick="abrirIngreso()">+ INGRESAR FACTURA</button>
+    <button class="nuevo" onclick="abrirImportar()">SUBIR DATOS (EXCEL)</button>
+    <button class="nuevo" onclick="abrirImagenes()">SUBIR IMÁGENES</button>
+  </div>
+<div class="fondo" id="fondo">
+  <div class="modal">
+    <h2>INGRESAR FACTURA NUEVA <button onclick="cerrarIngreso()" title="Cerrar">&times;</button></h2>
+    <div class="cuerpo-modal">
+      <div class="rejilla">
+        <div class="campo-form">
+          <label for="f_cons">Consecutivo electrónico *</label>
+          <input id="f_cons" class="mono" maxlength="20" placeholder="00300001040000001234">
+          <div class="pista">20 dígitos. Es la llave única: si ya existe, avisa antes de guardar.</div>
+        </div>
+        <div class="campo-form">
+          <label for="f_doc">Documento</label>
+          <input id="f_doc" class="mono" placeholder="1 - 19000">
+          <div class="pista">Si lo deja vacío se arma con el correlativo del consecutivo.</div>
+        </div>
+        <div class="campo-form">
+          <label for="f_fecha">Fecha *</label>
+          <input id="f_fecha" type="date">
+        </div>
+        <div class="campo-form">
+          <label for="f_tipo">Tipo de documento</label>
+          <select id="f_tipo">
+            <option>Tiquete electrónico</option>
+            <option>Factura electrónica</option>
+            <option>Nota de crédito</option>
+            <option>Nota de débito</option>
+          </select>
+        </div>
+        <div class="campo-form" style="grid-column:1/-1">
+          <label for="f_cli">Cliente *</label>
+          <input id="f_cli" list="lista_clientes" placeholder="CLIENTE GENERAL LIBERIA">
+          <datalist id="lista_clientes"></datalist>
+        </div>
+        <div class="campo-form">
+          <label for="f_sub">Subtotal *</label>
+          <input id="f_sub" class="mono" inputmode="decimal" placeholder="32993.92">
+        </div>
+        <div class="campo-form">
+          <label for="f_desc">Descuento</label>
+          <input id="f_desc" class="mono" inputmode="decimal" placeholder="3625.39">
+          <div class="pista">Si lo deja vacío, no hubo descuento.</div>
+        </div>
+        <div class="campo-form">
+          <label for="f_total">Total cobrado</label>
+          <input id="f_total" class="mono" inputmode="decimal" placeholder="30307.81">
+          <div class="pista">Si lo deja vacío se calcula: subtotal menos descuento.</div>
+        </div>
+        <div class="campo-form">
+          <label for="f_obs">Observaciones</label>
+          <input id="f_obs" placeholder="5 artículo(s) · detalle LS">
+        </div>
+        <div class="campo-form" style="grid-column:1/-1">
+          <label for="f_img">Imagen de la factura</label>
+          <div class="zona-img">
+            <div id="zonaImg" class="soltar-img">
+              <span>Arrastre aquí la imagen, o </span>
+              <button type="button" onclick="document.getElementById('f_img').click()">elegir archivo</button>
+              <input type="file" id="f_img" accept="image/*" style="display:none">
+            </div>
+            <div id="vistaImg" class="vista-img" style="display:none">
+              <img id="miniImg" alt="Imagen de la factura">
+              <div class="acciones-img">
+                <span id="pesoImg" class="pista"></span>
+                <button type="button" class="mini rojo" onclick="quitarImagen()">Quitar</button>
+              </div>
+            </div>
+          </div>
+          <div class="pista">Opcional. Se guarda dentro del buscador (JPG o PNG, hasta 4 MB).</div>
+        </div>
+      </div>
+      <div class="aviso" id="aviso"></div>
+    </div>
+    <div class="pie-modal">
+      <button class="gris" onclick="cerrarIngreso()">Cancelar</button>
+      <button onclick="guardarFactura()">GUARDAR FACTURA</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: subir imágenes ══ -->
+<div class="fondo" id="fondoImg">
+  <div class="modal" style="max-width:640px">
+    <h2>SUBIR IMÁGENES DE FACTURAS <button onclick="cerrarImagenes()" title="Cerrar">&times;</button></h2>
+    <div class="cuerpo-modal">
+      <p style="margin:0 0 13px;font-size:13.5px;color:#5A6874">
+        Elija las fotos de las facturas. Se emparejan solas por el <b>consecutivo de 20 dígitos</b>
+        que lleven en el nombre del archivo: <b>00300001010000015250.jpg</b>.
+        Las que no lo traigan se reparten por orden.
+      </p>
+      <div class="soltar" id="zonaImgSolo">
+        <div class="icono">&#128247;</div>
+        <div class="titulo-soltar">Arrastre las imágenes aquí</div>
+        <button onclick="document.getElementById('imgsSolo').click()">O elegir las imágenes</button>
+        <input type="file" id="imgsSolo" accept="image/*" multiple style="display:none">
+        <div class="pista" style="margin-top:11px">JPG, PNG o WEBP · se guardan dentro del buscador</div>
+      </div>
+      <div id="avisoImgSolo" class="pista" style="margin-top:11px;font-weight:600;color:#134074"></div>
+      <div class="aviso" id="avisoAplicar"></div>
+    </div>
+    <div class="pie-modal">
+      <button class="gris" onclick="cerrarImagenes()">Cancelar</button>
+      <button class="verde" id="btnAplicarSolo" onclick="aplicarSoloImagenes()">APLICAR A LAS FICHAS</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: importar de Excel ══ -->
+<div class="fondo" id="fondoImp">
+  <div class="modal" style="max-width:790px">
+    <h2>IMPORTAR DE EXCEL <button onclick="cerrarImportar()" title="Cerrar">&times;</button></h2>
+    <div class="cuerpo-modal">
+
+      <div id="paso1">
+        <p style="margin:0 0 13px;font-size:13.5px;color:#5A6874">
+          Elija el archivo con las facturas. Se leen las columnas <b>Documento</b>,
+          <b>Consecutivo</b>, <b>Tipo de documento</b>, <b>Fecha</b>, <b>Nombre</b>,
+          <b>Sub Total</b>, <b>Descuento</b> y <b>Total Cobrado</b>. Si su archivo usa
+          otros nombres, se detectan solos. Si la factura ya trae artículos e impuestos del reporte, se <b>enlaza</b> y se completa.
+        </p>
+        <div class="soltar" id="zonaSoltar">
+          <div class="icono">&#128193;</div>
+          <div class="titulo-soltar">Arrastre el archivo aquí</div>
+          <button onclick="document.getElementById('archivo').click()">O elegir el archivo</button>
+          <input type="file" id="archivo" accept=".xlsx,.xls,.csv" style="display:none">
+          <div class="pista" style="margin-top:11px">Formatos: .xlsx, .xls y .csv</div>
+        </div>
+
+        <div class="soltar" id="zonaReporte" style="margin-top:15px;border-color:#1E8449">
+          <div class="titulo-soltar" style="margin:0 0 6px;color:#1E8449">
+            Reporte de facturas desglosado (con artículos)
+          </div>
+          <div class="pista" style="margin-bottom:11px">
+            Si su archivo trae el detalle de compra —bloques de <b>Consecutivo</b> con las filas de
+            <b>Articulo</b>, <b>kg</b>, <b>Precio</b>— use este botón. Acepta <b>.xls</b> del sistema,
+            .xlsx y .csv. Si la factura <b>ya existe</b> (por ejemplo del documento de descuentos) se <b>enlaza</b>: se le suman artículos, impuestos y pago, y se verifica el descuento.
+          </div>
+          <button onclick="document.getElementById('archivoRep').click()"
+                  style="background:#1E8449">Elegir el reporte desglosado</button>
+          <input type="file" id="archivoRep" accept=".xls,.xlsx,.csv" style="display:none">
+          <div id="avisoRep" class="pista" style="margin-top:9px"></div>
+        </div>
+        <div id="avisoSucursal" style="display:none;margin-top:12px;padding:11px 13px;
+             border-radius:10px;font-size:13px;background:#FFF2CC;color:#8A6410;
+             border:1px solid #E8D08A;line-height:1.6"></div>
+        <div class="aviso" id="avisoImp"></div>
+      </div>
+
+      <div id="paso2" style="display:none">
+        <div id="resumenImp" style="margin-bottom:13px"></div>
+        <div style="max-height:300px;overflow:auto;border:1px solid #DCE9F7;border-radius:10px">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px" id="tablaPrev"></table>
+        </div>
+        <div class="pista" style="margin-top:9px" id="notaPrev">
+          Las filas en amarillo <b>ya existen en el buscador</b> y no se agregan.
+        </div>
+      </div>
+
+    </div>
+    <div class="pie-modal">
+      <button class="gris" onclick="cerrarImportar()">Cancelar</button>
+      <button class="gris" onclick="volverPaso1()" id="btnVolver" style="display:none">Elegir otro archivo</button>
+      <button onclick="aplicarSoloImagenes()" id="btnImagenes" class="verde">APLICAR LAS IMÁGENES</button>
+      <button onclick="confirmarImportar()" id="btnImportar" style="display:none">IMPORTAR LAS NUEVAS</button>
+    </div>
+  </div>
+</div>
+
+</section>
+
+<div class="filtros" id="filtros"></div>
+<div class="estado" id="estado"></div>
+
+<section class="resumen-filtro" id="resumenFiltro"></section>
+
+<main>
+  <section class="panel">
+    <h2 id="titulo">Escriba un número arriba</h2>
+    <div class="datos" id="datos"></div>
+    <div class="total" id="total"></div>
+    <div class="acciones-ficha">
+      <button class="mini neutro" onclick="copiaFicha()">Copiar los datos</button>
+      <button class="mini neutro" onclick="exportarFichaImagen()">Descargar la ficha como imagen</button>
+    </div>
+  </section>
+  <section class="panel imagen">
+    <h2>DETALLE DE COMPRA · IMAGEN</h2>
+    <div class="lienzo" id="lienzo">
+      <div class="vacio">Aquí aparece la imagen de la factura<br>cuando escriba su número.</div>
+    </div>
+  </section>
+</main>
+
+<section class="nuevas" id="panelNuevas" style="display:none">
+  <h2>FACTURAS INGRESADAS EN ESTE EQUIPO</h2>
+  <div class="barra-nuevas">
+    <button class="mini" onclick="descargarResp()">Descargar respaldo (CSV)</button>
+    <button class="mini verde" onclick="descargarTodo()">Descargar todo en Excel (CSV)</button>
+    <button class="mini" onclick="exportarRespaldoDB()" title="Copia completa de la base de datos">Exportar base de datos</button>
+    <button class="mini" onclick="importarRespaldoDB()" title="Restaurar desde un archivo .db">Importar base de datos</button>
+    <button class="mini" onclick="abrirCarpetaDatos()" title="Abrir la carpeta donde está el archivo facturas.db">Abrir carpeta de datos</button>
+  </div>
+  <div id="tablaNuevas"></div>
+</section>
+
+<footer>120 facturas con descuento · 01/10/2026 al 17/11/2026 · funciona sin conexión</footer>
+</section>
+
+<!-- ══ Modal: ingreso manual ══ -->
+<script>const FACTURAS_BASE = [];
+const DETALLE = {};
+</script>
+<script>
+
+/* ═══════════════════════════════════════════════════════════════════
+   BUSCADOR DE FACTURAS — SOLARIUM · Carnes San Martín
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── utilidades de formato ─────────────────────────────────────── */
+function pesos(v){
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  return "₡" + Number(v).toLocaleString("es-CR", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function pct(v){ return (Number(v || 0) * 100).toFixed(1).replace(".", ",") + "%"; }
+function aNumero(txt){
+  if (txt === null || txt === undefined) return null;
+  let t = String(txt).trim();
+  if (!t) return null;
+  t = t.replace(/[₡\s]/g, "");
+  const uc = t.lastIndexOf(","), up = t.lastIndexOf(".");
+  if (uc > -1 && up > -1){
+    if (uc > up) t = t.replace(/\./g, "").replace(",", ".");
+    else t = t.replace(/,/g, "");
+  } else if (uc > -1){
+    t = t.replace(/,(?=\d{3}\b)/g, "").replace(",", ".");
+  } else {
+    t = t.replace(/,(?=\d{3}\b)/g, "");
+  }
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+function fechaDeExcel(v){
+  if (v === null || v === undefined || v === "") return "";
+  if (v instanceof Date) return v.toISOString().slice(0,10);
+  if (typeof v === "number"){
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return isNaN(d) ? "" : d.toISOString().slice(0,10);
+  }
+  let t = String(v).trim();
+  let m = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m) return m[3] + "-" + m[2].padStart(2,"0") + "-" + m[1].padStart(2,"0");
+  m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if (m) return m[1] + "-" + m[2].padStart(2,"0") + "-" + m[3].padStart(2,"0");
+  return "";
+}
+function normalizar(s){
+  return String(s === null || s === undefined ? "" : s).trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+}
+function tipoPorConsecutivo(cons){
+  const s = String(cons || "").padStart(20,"0");
+  const par = s.substr(8,2);
+  if (par === "01") return "Factura electrónica";
+  if (par === "02") return "Nota de débito";
+  if (par === "03") return "Nota de crédito";
+  if (par === "04") return "Tiquete electrónico";
+  return "Tiquete electrónico";
+}
+function numeroDeDocumento(cons){
+  const s = String(cons || "").replace(/\D/g,"");
+  if (s.length < 20) return "";
+  const n = parseInt(s.substr(10),10);
+  return isNaN(n) ? "" : "1 - " + n;
+}
+function avisoFlotante(texto, ms){
+  let caja = document.getElementById("avisoFlotante");
+  if (!caja){
+    caja = document.createElement("div");
+    caja.id = "avisoFlotante";
+    caja.className = "aviso-export";
+    document.body.appendChild(caja);
+  }
+  caja.textContent = texto;
+  caja.style.display = "block";
+  clearTimeout(caja._t);
+  caja._t = setTimeout(() => { caja.style.display = "none"; }, ms || 2600);
+}
+
+/* ─── Base de datos SQLite (sql.js) + persistencia en IndexedDB ─── */
+let SQL = null;
+let db = null;
+const DB_NAME = "FacturasSanMartin";
+const DB_STORE = "sqlite";
+const DB_KEY = "facturas.db";
+
+let MODO_SERVIDOR = null;   // true cuando la página la sirve servidor.py (base compartida)
+async function initSQL() {
+  if (MODO_SERVIDOR === null){
+    try { const r = await fetch("api/ping", {cache: "no-store"}); MODO_SERVIDOR = r.ok && (await r.json()).ok === true; }
+    catch (e) { MODO_SERVIDOR = false; }
+  }
+  if (MODO_SERVIDOR) return;
+  if (SQL) return;
+  if (typeof initSqlJs === "undefined") {
+    throw new Error("sql.js no está cargado. Use ABRIR.bat para abrir la aplicación.");
+  }
+  // localizeFile: busca el .wasm en la misma carpeta que index.html
+  const base = (function() {
+    try {
+      const s = document.querySelector('script[src*="sql-wasm"]');
+      if (s && s.src) return s.src.replace(/sql-wasm\.js.*$/, "");
+    } catch (e) {}
+    return "";
+  })();
+  SQL = await initSqlJs({
+    locateFile: file => base + file
+  });
+  await loadDatabase();
+}
+
+async function loadDatabase() {
+  // Intentar cargar desde IndexedDB
+  try {
+    const data = await idbGet(DB_KEY);
+    if (data) {
+      db = new SQL.Database(new Uint8Array(data));
+      migrarDB();
+      return;
+    }
+  } catch (e) {
+    console.warn("No se pudo cargar BD de IndexedDB:", e);
+  }
+  // Crear base de datos nueva
+  db = new SQL.Database();
+  db.run(`
+    CREATE TABLE IF NOT EXISTS facturas (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      consecutivo   TEXT    UNIQUE NOT NULL,
+      sucursal      TEXT    NOT NULL,
+      documento     TEXT,
+      cliente       TEXT,
+      fecha         TEXT,
+      tipo          TEXT,
+      subtotal      REAL    DEFAULT 0,
+      descuento     REAL    DEFAULT 0,
+      pct           REAL    DEFAULT 0,
+      total         REAL    DEFAULT 0,
+      obs           TEXT,
+      img           TEXT,
+      lineas        TEXT,
+      ingresada     TEXT,
+      created_at    TEXT    DEFAULT (datetime('now')),
+      updated_at    TEXT    DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sucursal ON facturas(sucursal);
+    CREATE INDEX IF NOT EXISTS idx_fecha ON facturas(fecha);
+    CREATE INDEX IF NOT EXISTS idx_consecutivo ON facturas(consecutivo);
+  `);
+  migrarDB();
+  await persistDatabase();
+}
+function migrarDB(){ try { db.run("ALTER TABLE facturas ADD COLUMN extra TEXT"); } catch (e) {} }
+
+async function persistDatabase() {
+  if (!db) return;
+  try {
+    const data = db.export();
+    await idbSet(DB_KEY, data);
+  } catch (e) {
+    console.error("Error guardando BD:", e);
+  }
+}
+
+/* Helpers IndexedDB */
+function idbGet(key) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => {
+      const tx = req.result.transaction(DB_STORE, "readonly");
+      const store = tx.objectStore(DB_STORE);
+      const getReq = store.get(key);
+      getReq.onsuccess = () => resolve(getReq.result || null);
+      getReq.onerror = () => reject(getReq.error);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbSet(key, value) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => {
+      const tx = req.result.transaction(DB_STORE, "readwrite");
+      const store = tx.objectStore(DB_STORE);
+      const putReq = store.put(value, key);
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject(putReq.error);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/* ─── API de facturas ─────────────────────────────────────────── */
+
+function rowToFactura(row) {
+  let lineas = null;
+  if (row.lineas) {
+    try { lineas = JSON.parse(row.lineas); } catch (e) {}
+  }
+  return {
+    id: row.id,
+    consecutivo: row.consecutivo,
+    sucursal: row.sucursal,
+    marcaSucursal: row.sucursal,
+    documento: row.documento,
+    cliente: row.cliente,
+    fecha: row.fecha,
+    tipo: row.tipo,
+    subtotal: row.subtotal,
+    descuento: row.descuento,
+    pct: row.pct,
+    total: row.total,
+    obs: row.obs,
+    img: row.img,
+    lineas: lineas,
+    ingresada: row.ingresada,
+    extra: row.extra ? (function(){ try { return JSON.parse(row.extra); } catch (e) { return null; } })() : null
+  };
+}
+
+async function leerNuevas() {
+  await initSQL();
+  if (!sucursalActual) return [];
+  if (MODO_SERVIDOR) return (await apiGet("api/facturas?sucursal=" + encodeURIComponent(sucursalActual))).map(rowToFactura);
+  const stmt = db.prepare("SELECT * FROM facturas WHERE sucursal = ? ORDER BY fecha DESC, consecutivo DESC");
+  stmt.bind([sucursalActual]);
+  const rows = [];
+  while (stmt.step()) rows.push(rowToFactura(stmt.getAsObject()));
+  stmt.free();
+  return rows;
+}
+
+async function leerNuevasDeSucursal() {
+  return await leerNuevas();
+}
+
+async function guardarEnSucursal(f, diferir) {
+  await initSQL();
+  f.sucursal = f.sucursal || sucursalActual || "SIN SUCURSAL";
+  f.marcaSucursal = f.marcaSucursal || f.sucursal;
+  if (MODO_SERVIDOR){
+    await apiSend("POST", "api/factura", {consecutivo: String(f.consecutivo), sucursal: f.sucursal, documento: f.documento || null,
+      cliente: f.cliente || null, fecha: f.fecha || null, tipo: f.tipo || null, subtotal: Number(f.subtotal) || 0,
+      descuento: Number(f.descuento) || 0, pct: Number(f.pct) || 0, total: Number(f.total) || 0, obs: f.obs || null,
+      img: f.img || null, lineas: f.lineas ? JSON.stringify(f.lineas) : null,
+      ingresada: f.ingresada || new Date().toISOString(), extra: f.extra ? JSON.stringify(f.extra) : null});
+    return;
+  }
+
+  const lineasJson = f.lineas ? JSON.stringify(f.lineas) : null;
+
+  db.run(`
+    INSERT INTO facturas (
+      consecutivo, sucursal, documento, cliente, fecha, tipo,
+      subtotal, descuento, pct, total, obs, img, lineas, ingresada, extra, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(consecutivo) DO UPDATE SET
+      sucursal   = excluded.sucursal,
+      documento  = excluded.documento,
+      cliente    = excluded.cliente,
+      fecha      = excluded.fecha,
+      tipo       = excluded.tipo,
+      subtotal   = excluded.subtotal,
+      descuento  = excluded.descuento,
+      pct        = excluded.pct,
+      total      = excluded.total,
+      obs        = excluded.obs,
+      img        = COALESCE(excluded.img, facturas.img),
+      lineas     = COALESCE(excluded.lineas, facturas.lineas),
+      ingresada  = COALESCE(excluded.ingresada, facturas.ingresada),
+      extra      = COALESCE(excluded.extra, facturas.extra),
+      updated_at = datetime('now')
+  `, [
+    String(f.consecutivo),
+    f.sucursal,
+    f.documento || null,
+    f.cliente || null,
+    f.fecha || null,
+    f.tipo || null,
+    Number(f.subtotal) || 0,
+    Number(f.descuento) || 0,
+    Number(f.pct) || 0,
+    Number(f.total) || 0,
+    f.obs || null,
+    f.img || null,
+    lineasJson,
+    f.ingresada || new Date().toISOString(),
+    f.extra ? JSON.stringify(f.extra) : null
+  ]);
+
+  if (!diferir) await persistDatabase();
+}
+
+async function borrarFacturaLocal(cons) {
+  await initSQL();
+  if (MODO_SERVIDOR){ await apiSend("DELETE", "api/factura?cons=" + encodeURIComponent(cons)); return; }
+  db.run("DELETE FROM facturas WHERE consecutivo = ?", [cons]);
+  await persistDatabase();
+}
+
+async function contarPorSucursal() {
+  await initSQL();
+  if (MODO_SERVIDOR) return await apiGet("api/conteos");
+  const stmt = db.prepare("SELECT sucursal, COUNT(*) as cantidad FROM facturas GROUP BY sucursal");
+  const map = {};
+  while (stmt.step()) {
+    const r = stmt.getAsObject();
+    map[r.sucursal] = r.cantidad;
+  }
+  stmt.free();
+  return map;
+}
+
+/* ─── Exportar / Importar archivo .db ─────────────────────────── */
+
+async function exportarRespaldoDB() {
+  await initSQL();
+  if (MODO_SERVIDOR){ location.href = "api/export"; return; }
+  const data = db.export();
+  const blob = new Blob([data], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "facturas-san-martin-" + new Date().toISOString().slice(0,10) + ".db";
+  a.click();
+  URL.revokeObjectURL(url);
+  avisoFlotante("Respaldo descargado");
+}
+
+async function importarRespaldoDB() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".db";
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("Se reemplazarán todas las facturas actuales por las del archivo.\n\n¿Continuar?")) return;
+    if (MODO_SERVIDOR){
+      try {
+        const r = await fetch("api/import", {method: "POST", body: await file.arrayBuffer()}), j = await r.json();
+        if (!r.ok) throw new Error(j.error || "error");
+        avisoFlotante("Importadas " + j.facturas + " facturas. Recargando…"); setTimeout(() => location.reload(), 800);
+      } catch (err) { alert("Error al importar: " + err.message); }
+      return;
+    }
+    try {
+      const buffer = await file.arrayBuffer();
+      db = new SQL.Database(new Uint8Array(buffer));
+      await persistDatabase();
+      avisoFlotante("Respaldo importado. Recargando…");
+      setTimeout(() => location.reload(), 800);
+    } catch (err) {
+      alert("Error al importar: " + err.message);
+    }
+  };
+  input.click();
+}
+
+function abrirCarpetaDatos() {
+  alert("Los datos se guardan automáticamente en este navegador (IndexedDB).\n\nUse los botones «Exportar base de datos» e «Importar base de datos» para copiar o restaurar los datos.");
+}
+
+/* ─── clasificación por tipo ────────────────────────────────────── */
+function esAnulada(f){ return f.total < 0 || f.subtotal < 0 || /\(anulad|anulaci/i.test(f.obs || ""); }
+function esCredito(f){ return (f.tipo || "").toLowerCase().includes("crédito"); }
+function esDebito(f){ return (f.tipo || "").toLowerCase().includes("débito"); }
+function esFactura(f){ return (f.tipo || "").toLowerCase().includes("factura"); }
+function esTiquete(f){ return (f.tipo || "").toLowerCase().includes("tiquete"); }
+
+const FILTROS = [
+  {clave:"todos",         texto:"Todos"},
+  {clave:"descuento",     texto:"Con descuento",        prueba:f => f.descuento > 0},
+  {clave:"sin_descuento", texto:"Sin descuento",        prueba:f => !(f.descuento > 0)},
+  {clave:"fuerte",        texto:"Descuento 50 % o más", prueba:f => f.pct >= 0.5},
+  {clave:"tiquete",       texto:"Tiquete electrónico",  prueba:esTiquete},
+  {clave:"factura",       texto:"Factura electrónica",  prueba:esFactura},
+  {clave:"credito",       texto:"Nota de crédito",      prueba:f => esCredito(f) && !esAnulada(f)},
+  {clave:"debito",        texto:"Nota de débito",       prueba:f => esDebito(f) && !esAnulada(f)},
+  {clave:"anulada",       texto:"Anulación",            prueba:esAnulada},
+  {clave:"dif",           texto:"⚠ Con diferencias",    prueba:f => ver(f).errores > 0},
+  {clave:"incompleta",    texto:"Falta un documento",   prueba:f => { const u = fuentesDe(f); return !(u.doc && u.rep); }}
+];
+
+/* ─── estado ────────────────────────────────────────────────────── */
+let filtroActivo = null;
+let filtroRango  = null;
+let fichaActual  = null;
+let imagenManual = null;
+let imagenesLote = [];
+let filasImportadas = [];
+
+/* ─── filtros ───────────────────────────────────────────────────── */
+function cuantos(def){ return def.prueba ? FACTURAS.filter(def.prueba).length : FACTURAS.length; }
+
+function pintarFiltros(){
+  let html = '<span class="rotulo">Ver:</span>';
+  FILTROS.forEach(def => {
+    const n = cuantos(def);
+    const activo = filtroActivo === def.clave || (!filtroActivo && def.clave === "todos");
+    const sinDatos = n === 0 && def.clave !== "todos";
+    html += '<button class="chip' + (activo ? " on" : "") + (sinDatos ? " apagado" : "") + '"' +
+            (sinDatos ? ' title="No hay facturas de este tipo"' : '') +
+            ' onclick="elegirFiltro(\'' + def.clave + '\')">' + def.texto +
+            '<span class="n">' + n + '</span></button>';
+  });
+  html += '<span class="sep"></span><span class="rango">Descuento entre ' +
+          '<input type="number" id="rDesde" min="0" max="100" step="1" placeholder="0"> y ' +
+          '<input type="number" id="rHasta" min="0" max="100" step="1" placeholder="100"> % ' +
+          '<button class="chip" onclick="aplicarRango()">Aplicar</button></span>';
+  document.getElementById("filtros").innerHTML = html;
+  if (filtroRango){
+    document.getElementById("rDesde").value = filtroRango.desde;
+    document.getElementById("rHasta").value = filtroRango.hasta;
+  }
+}
+
+function elegirFiltro(clave){
+  if (clave === "todos"){ filtroActivo = null; filtroRango = null; }
+  else { filtroActivo = (filtroActivo === clave) ? null : clave; }
+  pintarFiltros();
+  aplicarFiltro();
+}
+
+function aplicarRango(){
+  let d = parseFloat(document.getElementById("rDesde").value);
+  let h = parseFloat(document.getElementById("rHasta").value);
+  if (isNaN(d) && isNaN(h)){ filtroRango = null; }
+  else {
+    if (isNaN(d)) d = 0;
+    if (isNaN(h)) h = 100;
+    if (d <= 1 && d > 0) d = d * 100;
+    if (h <= 1 && h > 0) h = h * 100;
+    filtroRango = {desde:d, hasta:h};
+  }
+  pintarFiltros();
+  aplicarFiltro();
+}
+
+function pasaFiltro(f){
+  if (filtroActivo){
+    const def = FILTROS.find(x => x.clave === filtroActivo);
+    if (def && def.prueba && !def.prueba(f)) return false;
+  }
+  if (filtroRango){
+    const p = f.pct * 100;
+    if (p < filtroRango.desde || p > filtroRango.hasta) return false;
+  }
+  return true;
+}
+
+function nombreFiltro(){
+  if (filtroActivo){
+    const def = FILTROS.find(x => x.clave === filtroActivo);
+    if (def) return def.texto;
+  }
+  if (filtroRango) return "Descuento entre " + filtroRango.desde + " % y " + filtroRango.hasta + " %";
+  return "Todas las facturas";
+}
+
+function aplicarFiltro(){
+  const caja = document.getElementById("resumenFiltro");
+  const sinFiltro = !filtroActivo && !filtroRango;
+  if (sinFiltro){
+    caja.style.display = "none";
+    document.getElementById("estado").innerHTML = "<b>" + FACTURAS.length +
+      "</b> facturas en el sistema" + resumenEnlace() + ". Escriba el número para ver una.";
+    return;
+  }
+  const sel = FACTURAS.filter(pasaFiltro);
+  const sub = sel.reduce((a,f) => a + (f.subtotal || 0), 0);
+  const des = sel.reduce((a,f) => a + (f.descuento || 0), 0);
+  const tot = sel.reduce((a,f) => a + (f.total || 0), 0);
+  const por = sub ? (des / sub * 100) : 0;
+
+  let html = "<h3><span>" + nombreFiltro() + " · " + sel.length + " factura" +
+             (sel.length === 1 ? "" : "s") + "</span><span style='display:inline-flex;gap:8px;flex-wrap:wrap'>" +
+             '<button onclick="exportarLote()">Descargar estas fichas como imágenes</button>' +
+             '<button onclick="quitarFiltros()">Quitar el filtro</button></span></h3>';
+  html += '<div class="totales-filtro">' +
+    '<div>Facturas<b>' + sel.length + '</b></div>' +
+    '<div class="plata">Subtotal<b>' + pesos(sub) + '</b></div>' +
+    '<div class="plata">Descuento<b>' + pesos(des) + '</b></div>' +
+    '<div>% de descuento<b>' + por.toFixed(1).replace(".", ",") + ' %</b></div>' +
+    '<div class="plata">Total cobrado<b>' + pesos(tot) + '</b></div></div>';
+
+  html += '<div class="lista-mini"><table><thead><tr><th>Consecutivo</th><th>Documento</th>' +
+    '<th>Fecha</th><th>Cliente</th><th class="num">Descuento</th>' +
+    '<th class="num">Total cobrado</th></tr></thead><tbody>';
+  sel.slice(0,50).forEach(f => {
+    html += '<tr onclick="elegir(\'' + f.consecutivo + '\')"><td>' + f.consecutivo + '</td><td>' +
+      f.documento + '</td><td>' + f.fecha + '</td><td class="cli">' + f.cliente + '</td><td class="num">' +
+      pesos(f.descuento) + '</td><td class="num">' + pesos(f.total) + '</td></tr>';
+  });
+  html += '</tbody></table><div class="mas">' +
+    (sel.length > 50 ? 'Se muestran las primeras 50 de ' + sel.length + '. ' : '') +
+    'Toque una fila para abrir su ficha.</div></div>';
+
+  caja.innerHTML = html;
+  caja.style.display = "block";
+  document.getElementById("estado").innerHTML = "<b>" + sel.length +
+    "</b> facturas cumplen el filtro «" + nombreFiltro() + "».";
+}
+
+function quitarFiltros(){
+  filtroActivo = null; filtroRango = null;
+  pintarFiltros(); aplicarFiltro(); limpiar();
+}
+
+/* ─── ficha ─────────────────────────────────────────────────────── */
+const ORDEN = [
+  ["documento","Documento"], ["consecutivo","Consecutivo"], ["cliente","Cliente"],
+  ["fecha","Fecha"], ["tipo","Tipo de documento"], ["subtotal","Subtotal"],
+  ["descuento","Descuento"], ["pct","% de descuento"], ["total","Total cobrado"],
+  ["obs","Observaciones"]
+];
+
+function vaciar(){
+  document.getElementById("titulo").textContent = "Escriba un número arriba";
+  document.getElementById("datos").innerHTML = "";
+  document.getElementById("total").textContent = "";
+  document.getElementById("lienzo").innerHTML =
+    '<div class="vacio">Aquí aparece la imagen de la factura<br>cuando escriba su número.</div>';
+  fichaActual = null;
+}
+
+function pintar(f){
+  fichaActual = f;
+  document.getElementById("titulo").textContent = "FACTURA " + f.documento + "  ·  " + f.consecutivo;
+  let html = "";
+  ORDEN.forEach(([k, etq]) => {
+    let v = f[k];
+    if (k === "subtotal" || k === "descuento" || k === "total") v = pesos(v);
+    else if (k === "pct") v = pct(v);
+    else if (v === null || v === undefined || v === "") v = "—";
+    html += '<div class="fila"><span>' + etq + '</span><span>' + v + '</span></div>';
+  });
+  document.getElementById("datos").innerHTML = html;
+  document.getElementById("total").textContent = "TOTAL COBRADO   " + pesos(f.total);
+  const lienzo = document.getElementById("lienzo");
+  const det = buscarDetalle(f.consecutivo);
+
+  // El detalle de compra SIEMPRE va en el area de la ficha.
+  html = "";
+  if (det) html += bloqueDetalle(f, det);
+
+  if (f.img){
+    html += '<div style="margin-top:14px">' +
+      '<div style="background:#2E75B6;color:#fff;padding:9px 13px;border-radius:9px 9px 0 0;' +
+      'font-size:12.5px;font-weight:700">IMAGEN DE LA FACTURA</div>' +
+      '<div style="border:1px solid #DCE9F7;border-top:0;border-radius:0 0 9px 9px;padding:11px;text-align:center">' +
+      '<img src="' + f.img + '" alt="Factura ' + f.documento + '" style="max-width:100%;border-radius:7px">' +
+      '</div></div>';
+  }
+
+  if (!html){
+    html = '<div class="vacio">Esta factura no tiene detalle de compra ni imagen cargada.</div>';
+  }
+  lienzo.innerHTML = html;
+
+}
+
+/* ─── buscar ────────────────────────────────────────────────────── */
+function buscar(){
+  const t = document.getElementById("q").value.trim();
+  const lista = document.getElementById("lista");
+  if (!t){ lista.style.display = "none"; vaciar(); aplicarFiltro(); return; }
+
+  const patron = t.toLowerCase();
+  const halladas = FACTURAS.filter(f => pasaFiltro(f) &&
+    (String(f.consecutivo).toLowerCase().includes(patron) ||
+     String(f.documento).toLowerCase().includes(patron) ||
+     String(f.cliente).toLowerCase().includes(patron) ||
+     String(f.fecha).includes(patron)));
+
+  if (!halladas.length){
+    lista.style.display = "none";
+    document.getElementById("estado").textContent = 'No hay ninguna factura que coincida con "' + t + '"' +
+      ((filtroActivo || filtroRango) ? " dentro del filtro «" + nombreFiltro() + "»" : "") + ".";
+    vaciar();
+    return;
+  }
+  pintar(halladas[0]);
+  if (halladas.length === 1){
+    lista.style.display = "none";
+    document.getElementById("estado").innerHTML = "Factura encontrada · " + halladas[0].fecha + " · " + halladas[0].cliente;
+  } else {
+    document.getElementById("estado").innerHTML = "<b>" + halladas.length + "</b> coincidencias. Elija la que busca.";
+    lista.innerHTML = halladas.slice(0,60).map(f =>
+      '<div onclick="elegir(\'' + f.consecutivo + '\')">' + f.consecutivo + "   " + f.fecha + "   " +
+      f.cliente + "</div>").join("");
+    lista.style.display = "block";
+  }
+}
+
+function elegir(cons){
+  document.getElementById("q").value = cons;
+  document.getElementById("lista").style.display = "none";
+  buscar();
+}
+function limpiar(){
+  document.getElementById("q").value = "";
+  document.getElementById("lista").style.display = "none";
+  vaciar();
+  aplicarFiltro();
+}
+
+/* ─── comprimir imágenes ────────────────────────────────────────── */
+function achicarImagen(archivo, lado, alTerminar){
+  const lector = new FileReader();
+  lector.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const mayor = Math.max(w,h);
+      if (mayor > lado){ const f = lado / mayor; w = Math.round(w*f); h = Math.round(h*f); }
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      alTerminar(c.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = () => alTerminar(null);
+    img.src = e.target.result;
+  };
+  lector.readAsDataURL(archivo);
+}
+
+/* ─── ingreso manual ────────────────────────────────────────────── */
+function ponerImagen(archivo){
+  if (!archivo) return;
+  if (!/^image\//.test(archivo.type)) return alert("El archivo no es una imagen.");
+  if (archivo.size > 4*1024*1024) return alert("La imagen pesa más de 4 MB. Use una más liviana.");
+  achicarImagen(archivo, 700, dato => {
+    if (!dato) return alert("No se pudo leer la imagen.");
+    imagenManual = dato;
+    document.getElementById("miniImg").src = dato;
+    document.getElementById("pesoImg").textContent = "lista · " + Math.round(dato.length/1024) + " KB";
+    document.getElementById("vistaImg").style.display = "flex";
+    document.getElementById("zonaImg").style.display = "none";
+  });
+}
+function quitarImagen(){
+  imagenManual = null;
+  const v = document.getElementById("vistaImg"), z = document.getElementById("zonaImg");
+  if (v) v.style.display = "none";
+  if (z) z.style.display = "block";
+  const inp = document.getElementById("f_img");
+  if (inp) inp.value = "";
+}
+function abrirIngreso(){
+  document.getElementById("f_fecha").value = new Date().toISOString().slice(0,10);
+  ["f_cons","f_doc","f_cli","f_sub","f_desc","f_total","f_obs"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("f_tipo").value = "Tiquete electrónico";
+  quitarImagen();
+  const a = document.getElementById("aviso");
+  a.className = "aviso"; a.textContent = "";
+  const dl = document.getElementById("lista_clientes");
+  dl.innerHTML = [...new Set(FACTURAS.map(f => f.cliente))]
+    .map(c => '<option value="' + c + '">').join("");
+  document.getElementById("fondo").classList.add("abierto");
+  document.getElementById("f_cons").focus();
+}
+function cerrarIngreso(){ document.getElementById("fondo").classList.remove("abierto"); }
+function avisar(texto, clase){
+  const a = document.getElementById("aviso");
+  a.textContent = texto; a.className = "aviso " + clase;
+}
+async function guardarFactura(){
+  const cons  = document.getElementById("f_cons").value.replace(/\D/g,"");
+  const fecha = document.getElementById("f_fecha").value;
+  const cli   = document.getElementById("f_cli").value.trim();
+  const sub   = aNumero(document.getElementById("f_sub").value);
+  let des     = aNumero(document.getElementById("f_desc").value);
+  let tot     = aNumero(document.getElementById("f_total").value);
+
+  if (cons.length !== 20) return avisar("El consecutivo debe tener 20 dígitos (tiene " + cons.length + ").", "err");
+  if (!fecha) return avisar("Falta la fecha de la factura.", "err");
+  if (!cli)   return avisar("Falta el nombre del cliente.", "err");
+  if (sub === null) return avisar("Falta el subtotal (sin el descuento).", "err");
+  if (des === null) des = 0;
+  if (tot === null) tot = sub - des;
+
+  const yaExiste = FACTURAS.some(f => f.consecutivo === cons);
+  if (yaExiste) {
+    if (!confirm("La factura " + cons + " ya está registrada.\n\n¿Quiere guardarla otra vez?")) return;
+  }
+
+  let doc = document.getElementById("f_doc").value.trim() || numeroDeDocumento(cons);
+  const nueva = {
+    documento: doc, consecutivo: cons, cliente: cli, fecha: fecha,
+    tipo: document.getElementById("f_tipo").value,
+    subtotal: Math.round(sub*100)/100,
+    descuento: Math.round(des*100)/100,
+    pct: sub ? des/sub : 0,
+    total: Math.round(tot*100)/100,
+    obs: document.getElementById("f_obs").value.trim(),
+    img: imagenManual,
+    ingresada: new Date().toISOString(),
+    marcaSucursal: sucursalActual,
+    sucursal: sucursalActual
+  };
+
+  await guardarEnSucursal(nueva);
+  if (!FACTURAS.some(f => f.consecutivo === cons)) FACTURAS.push(nueva);
+
+  avisar("Factura " + cons + " guardada. Ya se puede buscar como cualquier otra.", "ok");
+  await pintarNuevas();
+  pintarFiltros();
+  document.getElementById("q").value = cons;
+  setTimeout(buscar, 300);
+}
+
+/* ─── lista de lo ingresado ─────────────────────────────────────── */
+async function pintarNuevas(){
+  const lista = await leerNuevas();
+  const panel = document.getElementById("panelNuevas");
+  const caja = document.getElementById("tablaNuevas");
+  if (!lista.length){ panel.style.display = "block"; caja.innerHTML = '<div class="pista" style="padding:14px 17px">Todavía no hay facturas en este equipo. Si tiene una copia de otra computadora, use «Importar base de datos».</div>'; return; }
+  panel.style.display = "block";
+  let html = '<table><thead><tr><th>Consecutivo</th><th>Documento</th><th>Fecha</th>' +
+    '<th>Cliente</th><th style="text-align:right">Descuento</th>' +
+    '<th style="text-align:right">Total cobrado</th><th></th></tr></thead><tbody>';
+  lista.slice().reverse().forEach(f => {
+    html += '<tr><td>' + f.consecutivo + '</td><td>' + f.documento + '</td><td>' + f.fecha + '</td>' +
+      '<td class="cli">' + f.cliente + '</td><td style="text-align:right">' + pesos(f.descuento) + '</td>' +
+      '<td style="text-align:right">' + pesos(f.total) + '</td>' +
+      '<td><div class="acciones-fila">' +
+      '<button class="mini" onclick="elegir(\'' + f.consecutivo + '\')">Ver</button>' +
+      '<button class="mini rojo" onclick="borrarNueva(\'' + f.consecutivo + '\')">Borrar</button>' +
+      '</div></td></tr>';
+  });
+  caja.innerHTML = html + '</tbody></table>';
+}
+
+async function borrarNueva(cons){
+  if (!confirm("¿Borrar la factura " + cons + " de las ingresadas en este equipo?")) return;
+  await borrarFacturaLocal(cons);
+  for (let i = FACTURAS.length-1; i >= 0; i--)
+    if (FACTURAS[i].consecutivo === cons) FACTURAS.splice(i,1);
+  await pintarNuevas();
+  pintarFiltros();
+  limpiar();
+}
+
+/* ─── respaldos ─────────────────────────────────────────────────── */
+function descargar(nombre, contenido, tipo){
+  const b = new Blob([contenido], {type: tipo});
+  const u = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = u; a.download = nombre; a.click();
+  URL.revokeObjectURL(u);
+}
+
+async function descargarResp(){
+  const lista = await leerNuevas();
+  if (!lista.length) return alert("Todavía no has ingresado facturas en este equipo.");
+  const filas = [["documento","consecutivo","tipo","fecha","cliente","subtotal","descuento",
+                  "pct_descuento","total_cobrado","observaciones"]];
+  lista.forEach(f => filas.push([f.documento,f.consecutivo,f.tipo,f.fecha,f.cliente,
+    f.subtotal,f.descuento,f.pct,f.total,f.obs]));
+  const csv = filas.map(r => r.map(v => {
+    const s = String(v === null || v === undefined ? "" : v);
+    return /[",;\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(";")).join("\n");
+  descargar("facturas_ingresadas.csv", "\ufeff" + csv, "text/csv;charset=utf-8");
+}
+
+/* ─── ficha como imagen ─────────────────────────────────────────── */
+function envolverLineas(texto, ancho, tamano, negrita){
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = (negrita ? "bold " : "") + tamano + "px 'Segoe UI', Arial, sans-serif";
+  const palabras = String(texto).split(/\s+/);
+  const lineas = []; let actual = "";
+  palabras.forEach(p => {
+    const prueba = actual ? actual + " " + p : p;
+    if (ctx.measureText(prueba).width > ancho && actual){ lineas.push(actual); actual = p; }
+    else actual = prueba;
+  });
+  if (actual) lineas.push(actual);
+  return lineas;
+}
+
+function dibujarFicha(f, alTerminar){
+  const DPR = 2, ANCHO = 900, LEFT = 34, RIGHT = ANCHO - 34;
+  const lienzo = document.createElement("canvas");
+  const ctx = lienzo.getContext("2d");
+
+  const FILAS = filasFicha(f);
+  let altoFilas = 0;
+  FILAS.forEach(([e,v]) => {
+    const l = envolverLineas(v, 430, 15, false);
+    altoFilas += Math.max(30, l.length * 20 + 10);
+  });
+  const ALTO = 96 + 34 + 24 + altoFilas + 46 + 40 + (f.img ? 300 : 60) + 56;
+
+  lienzo.width = ANCHO * DPR;
+  lienzo.height = ALTO * DPR;
+  ctx.scale(DPR, DPR);
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0,0,ANCHO,ALTO);
+  ctx.fillStyle = "#0B2545"; ctx.fillRect(0,0,ANCHO,96);
+
+  const logo = document.getElementById("logoImg");
+  function cuerpo(){
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 22px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("FICHA DE FACTURA", 110, 44);
+    ctx.fillStyle = "#8AB6E0";
+    ctx.font = "13px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Carnes San Martín · facturas con descuento", 110, 68);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#DCE9F7";
+    ctx.font = "bold 13px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(f.documento, RIGHT, 44);
+    ctx.fillStyle = "#8AB6E0";
+    ctx.font = "12px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(f.fecha, RIGHT, 66);
+    ctx.textAlign = "left";
+
+    ctx.fillStyle = "#134074"; ctx.fillRect(0,96,ANCHO,34);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 15px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("FACTURA " + f.documento + "   ·   " + f.consecutivo, LEFT, 119);
+
+    let y = 96 + 34 + 24;
+    FILAS.forEach(([etq, val], i) => {
+      const lineas = envolverLineas(val, 430, 15, false);
+      const alto = Math.max(30, lineas.length * 20 + 10);
+      if (i % 2 === 0){ ctx.fillStyle = "#F7FAFD"; ctx.fillRect(20, y-16, ANCHO-40, alto); }
+      ctx.fillStyle = "#5A6874";
+      ctx.font = "bold 11.5px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText(etq.toUpperCase(), LEFT, y);
+      ctx.fillStyle = "#13315C";
+      ctx.font = (etq === "Total cobrado" ? "bold 17px" : "15px") + " 'Segoe UI', Arial, sans-serif";
+      lineas.forEach((l,k) => ctx.fillText(l, 330, y + k*20));
+      y += alto;
+    });
+
+    y += 12;
+    ctx.fillStyle = "#E3F2E6"; ctx.fillRect(20, y-20, ANCHO-40, 40);
+    ctx.fillStyle = "#1E8449";
+    ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("TOTAL COBRADO   " + pesos(f.total), RIGHT, y+7);
+    ctx.textAlign = "left";
+    y += 44;
+
+    if (f.img){
+      const im = new Image();
+      im.onload = () => {
+        const maxW = ANCHO-68, maxH = 300;
+        let w = im.width, h = im.height;
+        const esc = Math.min(maxW/w, maxH/h, 1);
+        w = Math.round(w*esc); h = Math.round(h*esc);
+        ctx.fillStyle = "#134074"; ctx.fillRect(0,y,ANCHO,30);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "bold 12.5px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("DETALLE DE COMPRA", LEFT, y+20);
+        y += 40;
+        ctx.drawImage(im, LEFT, y, w, h);
+        pie(y + h + 26);
+      };
+      im.onerror = () => pie(y + 20);
+      im.src = f.img;
+    } else {
+      ctx.fillStyle = "#8AB6E0";
+      ctx.font = "italic 14px 'Segoe UI', Arial, sans-serif";
+      ctx.fillText("Esta factura no tiene imagen adjunta.", LEFT, y+18);
+      pie(y + 44);
+    }
+  }
+  function pie(yPie){
+    ctx.fillStyle = "#5A6874";
+    ctx.font = "11px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("Generado desde el Buscador de Facturas · Carnes San Martín · " +
+                 new Date().toLocaleString("es-CR"), LEFT, ALTO-22);
+    alTerminar(lienzo.toDataURL("image/png"));
+  }
+  function conLogo(){
+    if (logo && logo.complete && logo.naturalWidth){
+      ctx.fillStyle = "#FFFFFF";
+      const lx = 34, ly = 20, lado = 56, r = 12;
+      ctx.beginPath();
+      ctx.moveTo(lx+r, ly);
+      ctx.arcTo(lx+lado, ly, lx+lado, ly+lado, r);
+      ctx.arcTo(lx+lado, ly+lado, lx, ly+lado, r);
+      ctx.arcTo(lx, ly+lado, lx, ly, r);
+      ctx.arcTo(lx, ly, lx+lado, ly, r);
+      ctx.closePath(); ctx.fill();
+      ctx.drawImage(logo, lx+8, ly+8, 40, 40);
+    }
+    cuerpo();
+  }
+  if (logo && logo.complete) conLogo();
+  else if (logo){ logo.onload = conLogo; logo.onerror = cuerpo; }
+  else cuerpo();
+}
+
+function exportarFichaImagen(){
+  if (!fichaActual) return avisoFlotante("Primero busque una factura.");
+  avisoFlotante("Preparando la imagen de la ficha…");
+  dibujarFicha(fichaActual, dato => {
+    const a = document.createElement("a");
+    a.href = dato;
+    a.download = "Ficha_" + fichaActual.consecutivo + ".png";
+    a.click();
+    avisoFlotante("Imagen descargada: Ficha_" + fichaActual.consecutivo + ".png");
+  });
+}
+function copiaFicha(){
+  if (!fichaActual) return avisoFlotante("Primero busque una factura.");
+  const f = fichaActual;
+  navigator.clipboard.writeText(["FACTURA " + f.documento + " · " + f.consecutivo].concat(filasFicha(f).map(r => r[0] + ": " + r[1])).join("\n"))
+    .then(() => avisoFlotante("Datos copiados al portapapeles."))
+    .catch(() => avisoFlotante("No se pudo copiar. Seleccione el texto a mano."));
+}
+function exportarLote(){
+  const sel = FACTURAS.filter(pasaFiltro);
+  if (sel.length > 30 && !confirm("Son " + sel.length + " fichas y se descargarán una por una.\n\n¿Seguir?")) return;
+  avisoFlotante("Generando " + sel.length + " imágenes…");
+  let i = 0;
+  const siguiente = () => {
+    if (i >= sel.length){
+      avisoFlotante("Listo: " + sel.length + " imágenes en su carpeta de descargas.", 4000);
+      return;
+    }
+    const f = sel[i++];
+    dibujarFicha(f, dato => {
+      const a = document.createElement("a");
+      a.href = dato; a.download = "Ficha_" + f.consecutivo + ".png"; a.click();
+      setTimeout(siguiente, 320);
+    });
+  };
+  siguiente();
+}
+
+/* ─── importar de Excel ─────────────────────────────────────────── */
+const ALIAS = {
+  documento:   ["documento","doc","numero documento","n documento","factura"],
+  consecutivo: ["consecutivo","consecutivo electronico","clave","clave numerica","numero factura","no factura"],
+  tipo:        ["tipo","tipo de documento","tipo doc"],
+  fecha:       ["fecha","fecha emision","fecha de emision"],
+  cliente:     ["nombre","cliente","nombre cliente","razon social","nombre o razon social"],
+  subtotal:    ["sub total","subtotal","sub-total","gravado","base"],
+  descuento:   ["descuento","desc","monto descuento","descuento total"],
+  pct:         ["% desc.","% desc","porc descuento","porcentaje descuento","% descuento"],
+  total:       ["total cobrado","total","total factura","total neto"],
+  obs:         ["observaciones","obs","detalle","comentario"]
+};
+
+function abrirImportar(){
+  filasImportadas = []; imagenesLote = [];
+  document.getElementById("paso1").style.display = "block";
+  document.getElementById("paso2").style.display = "none";
+  document.getElementById("btnImportar").style.display = "none";
+  document.getElementById("btnVolver").style.display = "none";
+  { const _av2 = document.getElementById("avisoImgs"); if (_av2) _av2.textContent = ""; }
+  const a = document.getElementById("avisoImp");
+  a.className = "aviso"; a.textContent = "";
+  document.getElementById("fondoImp").classList.add("abierto");
+}
+function cerrarImportar(){ document.getElementById("fondoImp").classList.remove("abierto"); }
+function volverPaso1(){
+  document.getElementById("paso1").style.display = "block";
+  document.getElementById("paso2").style.display = "none";
+  document.getElementById("btnImportar").style.display = "none";
+  document.getElementById("btnVolver").style.display = "none";
+}
+function avisoImp(texto, clase){
+  const a = document.getElementById("avisoImp");
+  a.textContent = texto; a.className = "aviso " + clase;
+}
+
+function detectarConsecutivoPorDatos(filas, filaEnc){
+  // busca la columna cuyas celdas sean numeros de 20 digitos
+  const ancho = Math.max.apply(null, filas.slice(filaEnc, filaEnc + 30).map(f => f.length));
+  let mejor = -1, mejorCuenta = 0;
+  for (let c = 0; c < ancho; c++){
+    let cuenta = 0;
+    for (let i = filaEnc + 1; i < Math.min(filas.length, filaEnc + 40); i++){
+      const v = String(filas[i][c] === undefined ? "" : filas[i][c]).replace(/\D/g,"");
+      if (v.length === 20) cuenta++;
+    }
+    if (cuenta > mejorCuenta){ mejor = c; mejorCuenta = cuenta; }
+  }
+  return mejorCuenta >= 3 ? mejor : -1;
+}
+
+function mapaLlaves(cabeceras){
+  const mapa = {}, norm = cabeceras.map(normalizar);
+  for (const campo of Object.keys(ALIAS)){
+    let idx = -1;
+    for (const a of ALIAS[campo]){ const i = norm.indexOf(a); if (i > -1){ idx = i; break; } }
+    if (idx === -1){
+      for (let i = 0; i < norm.length; i++){
+        if (norm[i] && ALIAS[campo].some(a => norm[i].includes(a))){ idx = i; break; }
+      }
+    }
+    mapa[campo] = idx;
+  }
+  return mapa;
+}
+
+function leerArchivo(archivo){
+  if (typeof XLSX === "undefined"){
+    return avisoImp("No se pudo cargar el lector de Excel. Cierre esta ventana, use ABRIR.bat y vuelva a intentar.", "err");
+  }
+  const lector = new FileReader();
+  lector.onload = ev => {
+    try {
+      const libro = XLSX.read(new Uint8Array(ev.target.result), {type:"array", cellDates:true});
+      let filas = [];
+      for (const nombre of libro.SheetNames){
+        const hoja = XLSX.utils.sheet_to_json(libro.Sheets[nombre], {header:1, raw:true, defval:""});
+        if (hoja.length > 1){ filas = hoja; break; }
+      }
+      if (!filas.length) return avisoImp("El archivo no tiene datos legibles.", "err");
+      procesarFilas(filas);
+    } catch(e){ avisoImp("No se pudo leer el archivo: " + e.message, "err"); }
+  };
+  lector.readAsArrayBuffer(archivo);
+}
+
+const CLAVES_ENCABEZADO = ["consecutivo","documento","fecha","cliente","nombre",
+  "total","subtotal","sub total","sub-total","descuento","tipo","observaciones","obs"];
+
+function puntajeEncabezado(fila){
+  // cuenta cuantas celdas de la fila son nombres de columna conocidos
+  let n = 0;
+  fila.forEach(c => {
+    const t = normalizar(c);
+    if (!t) return;
+    if (CLAVES_ENCABEZADO.some(k => t === k || t.includes(k) || k.includes(t))) n++;
+  });
+  return n;
+}
+
+function buscarFilaEncabezados(filas){
+  // se elige la fila que MAS nombres de columna tenga, no la primera con texto:
+  // asi se salta titulos, menus y filas de totales
+  let mejor = 0, mejorPuntaje = -1;
+  const limite = Math.min(filas.length, 20);
+  for (let i = 0; i < limite; i++){
+    const p = puntajeEncabezado(filas[i]);
+    if (p > mejorPuntaje){ mejor = i; mejorPuntaje = p; }
+  }
+  return {fila: mejor, puntaje: mejorPuntaje};
+}
+
+function procesarFilas(filas){
+  const elegida = buscarFilaEncabezados(filas);
+  const filaEnc = elegida.fila;
+  const cabeceras = filas[filaEnc];
+  const mapa = mapaLlaves(cabeceras);
+
+  if (mapa.consecutivo === -1){
+    // ultimo intento: buscar la columna por el CONTENIDO (celdas de 20 digitos)
+    const colPorDatos = detectarConsecutivoPorDatos(filas, filaEnc);
+    if (colPorDatos > -1) mapa.consecutivo = colPorDatos;
+  }
+  if (mapa.consecutivo === -1)
+    return avisoImp("No encontré la columna «Consecutivo». Leí los encabezados de la fila " +
+      (filaEnc + 1) + ": " + cabeceras.filter(c => c).slice(0,12).join(" · ") +
+      ". Si su archivo tiene el consecutivo con otro nombre, dígamelo y lo agrego.", "err");
+  if (mapa.subtotal === -1 && mapa.total === -1)
+    return avisoImp("No encontré las columnas de montos (Sub Total / Total Cobrado).", "err");
+
+  const yaExisten = new Set(FACTURAS.map(f => f.consecutivo));
+  const vistas = new Set(), salida = [];
+
+  for (let i = filaEnc + 1; i < filas.length; i++){
+    const fila = filas[i];
+    const cons = String(fila[mapa.consecutivo] === undefined ? "" : fila[mapa.consecutivo]).replace(/\D/g,"");
+    if (cons.length !== 20) continue;
+
+    const sub = mapa.subtotal > -1 ? aNumero(fila[mapa.subtotal]) : null;
+    const des = mapa.descuento > -1 ? aNumero(fila[mapa.descuento]) : null;
+    let tot   = mapa.total > -1 ? aNumero(fila[mapa.total]) : null;
+    const desc = des === null ? 0 : des;
+    const subtotal = sub === null ? (tot === null ? 0 : tot + desc) : sub;
+    if (tot === null) tot = subtotal - desc;
+
+    const fecha = mapa.fecha > -1 ? fechaDeExcel(fila[mapa.fecha]) : "";
+    if (!fecha) continue;
+
+    const cliente = mapa.cliente > -1 ? String(fila[mapa.cliente] || "").trim() : "";
+    let doc = mapa.documento > -1 ? String(fila[mapa.documento] || "").trim() : "";
+    if (!doc) doc = numeroDeDocumento(cons);
+    let tipo = mapa.tipo > -1 ? String(fila[mapa.tipo] || "").trim() : "";
+    if (!tipo) tipo = tipoPorConsecutivo(cons);
+    const obs = mapa.obs > -1 ? String(fila[mapa.obs] || "").trim() : "";
+
+    const repetida = yaExisten.has(cons) || vistas.has(cons);
+    vistas.add(cons);
+    salida.push({
+      documento: doc, consecutivo: cons, cliente: cliente || "(sin nombre)", fecha, tipo,
+      subtotal: Math.round(subtotal*100)/100,
+      descuento: Math.round(desc*100)/100,
+      pct: subtotal ? desc/subtotal : 0,
+      total: Math.round(tot*100)/100,
+      obs, img: null, ingresada: new Date().toISOString(), repetida, origen: "doc"
+    });
+  }
+
+  if (!salida.length)
+    return avisoImp("No encontré facturas válidas. Se necesitan las columnas de consecutivo (20 dígitos) y fecha.", "err");
+
+  filasImportadas = salida;
+  mostrarPrevia();
+}
+
+function repartirImagenes(filas){
+  if (!imagenesLote.length) return 0;
+  const usadas = new Set();
+  let puestas = 0;
+  const porNumero = {};
+  imagenesLote.forEach(i => { if (i.consecutivo) porNumero[i.consecutivo] = i; });
+  filas.forEach(f => {
+    const hit = porNumero[f.consecutivo];
+    if (hit && !usadas.has(hit.nombre)){ f.img = hit.dato; usadas.add(hit.nombre); puestas++; }
+  });
+  const sobrantes = imagenesLote.filter(i => !usadas.has(i.nombre));
+  const sinImagen = filas.filter(f => !f.img);
+  for (let i = 0; i < sobrantes.length && i < sinImagen.length; i++){
+    sinImagen[i].img = sobrantes[i].dato;
+    usadas.add(sobrantes[i].nombre);
+    puestas++;
+  }
+  return puestas;
+}
+
+/* ─── ventana propia para subir imágenes ────────────────────────── */
+function abrirImagenes(){
+  imagenesLote = [];
+  document.getElementById("avisoImgSolo").textContent = "";
+  document.getElementById("imgsSolo").value = "";
+  const a = document.getElementById("avisoAplicar");
+  a.className = "aviso"; a.textContent = "";
+  document.getElementById("fondoImg").classList.add("abierto");
+}
+function cerrarImagenes(){
+  document.getElementById("fondoImg").classList.remove("abierto");
+}
+function avisoAplicar(texto, clase){
+  const a = document.getElementById("avisoAplicar");
+  a.textContent = texto; a.className = "aviso " + clase;
+}
+
+document.getElementById("imgsSolo").addEventListener("change", e => {
+  const archivos = Array.from(e.target.files || []);
+  if (!archivos.length) return;
+  imagenesLote = [];
+  let pendientes = archivos.length;
+  archivos.forEach(a => {
+    achicarImagen(a, 700, dato => {
+      const num = (a.name.match(/\d{20}/) || [])[0] || null;
+      if (dato) imagenesLote.push({nombre:a.name, dato, consecutivo:num});
+      if (--pendientes === 0){
+        const conNum = imagenesLote.filter(x => x.consecutivo).length;
+        document.getElementById("avisoImgSolo").innerHTML =
+          "<b>" + imagenesLote.length + "</b> imágenes cargadas · " + conNum +
+          " traen el consecutivo en el nombre." +
+          (imagenesLote.length - conNum ? " Las demás se repartirán por orden." : "");
+      }
+    });
+  });
+});
+
+/* ─── aplicar SOLO las imágenes, aunque la factura ya exista ────── */
+async function aplicarSoloImagenes(){
+  const avisa = (typeof avisoAplicar === "function") ? avisoAplicar : avisoImp;
+  if (!imagenesLote.length){
+    return avisa("Todavía no ha elegido imágenes. Use el botón «Elegir imágenes».", "err");
+  }
+
+  if (!sucursalActual){
+    return avisa("Primero entre a una sucursal (Tienda Solarium o CEDI Liberia) y vuelva a intentar.", "err");
+  }
+
+  repartirBase();
+  const todas = FACTURAS.slice();
+  const usadas = new Set();
+  let porNumero = 0, porOrden = 0, sinDestino = 0;
+
+  const mapa = {};
+  imagenesLote.forEach(im => { if (im.consecutivo) mapa[im.consecutivo] = im; });
+  todas.forEach(f => {
+    const hit = mapa[f.consecutivo];
+    if (hit && !usadas.has(hit.nombre)){
+      f.img = hit.dato; usadas.add(hit.nombre); porNumero++;
+    }
+  });
+
+  const sobrantes = imagenesLote.filter(im => !usadas.has(im.nombre));
+  const sinImagen = todas.filter(f => !f.img);
+  for (let k = 0; k < sobrantes.length; k++){
+    if (k < sinImagen.length){
+      sinImagen[k].img = sobrantes[k].dato;
+      usadas.add(sobrantes[k].nombre);
+      porOrden++;
+    } else {
+      sinDestino++;
+    }
+  }
+
+  // Guardar cada factura con imagen en SQLite / localStorage
+  for (const f of todas) {
+    if (f.img) await guardarEnSucursal(f);
+  }
+
+  if (fichaActual){
+    const recargada = FACTURAS.find(x => x.consecutivo === fichaActual.consecutivo);
+    if (recargada) pintar(recargada);
+  }
+  pintarFiltros();
+  await pintarNuevas();
+
+  const total = porNumero + porOrden;
+  if (!total){
+    avisa("No se pudo emparejar ninguna imagen. Revise que los nombres de los archivos " +
+          "traigan el consecutivo de la factura.", "err");
+    return;
+  }
+  avisa("Se aplicaron " + total + " imágenes (" + porNumero +
+        " por el consecutivo del nombre, " + porOrden + " por orden)" +
+        (sinDestino ? ". " + sinDestino + " no encontraron factura." : ".") +
+        " Las facturas no se tocaron.", "ok");
+  setTimeout(cerrarImagenes, 2600);
+}
+
+
+/* ─── descargar todo el buscador como CSV para Excel ────────────── */
+function descargarTodo(){
+  const filas = [["documento","consecutivo","tipo","fecha","cliente","subtotal",
+                  "descuento","pct_descuento","total_cobrado","observaciones","iv_total","ventas_13","ventas_1","iv_1","pago","fuentes","verificacion"]];
+  FACTURAS.forEach(f => { const x = f.extra || {}, u = fuentesDe(f), v = ver(f); filas.push([f.documento, f.consecutivo, f.tipo, f.fecha,
+    f.cliente, f.subtotal, f.descuento, f.pct, f.total, f.obs, x.iva, x.v13, x.v1, x.iva1, x.pago,
+    (u.doc ? "doc" : "") + (u.doc && u.rep ? "+" : "") + (u.rep ? "rep" : ""), v.errores ? v.errores + " diferencia(s)" : "ok"]); });
+  const csv = filas.map(r => r.map(v => {
+    const s = String(v === null || v === undefined ? "" : v);
+    return /[",;\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(";")).join("\n");
+  descargar("Facturas_Solarium.csv", "\ufeff" + csv, "text/csv;charset=utf-8");
+  avisoFlotante("Se descargaron " + FACTURAS.length + " facturas en un archivo para Excel.");
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LECTOR DEL REPORTE DESGLOSADO (facturas con artículos)
+   Reconoce cada bloque por la fila «Consecutivo», agrupa los artículos
+   y NO agrega las facturas que ya existen en el buscador.
+   ═══════════════════════════════════════════════════════════════════ */
+let reporteLeido = [];
+
+function txtCelda(fila, c){
+  const v = fila[c];
+  return v === undefined || v === null ? "" : String(v).replace(/\ufeff/g,"").trim();
+}
+function numCelda(fila, c){
+  const v = fila[c];
+  if (v === undefined || v === null || v === "") return null;
+  const n = typeof v === "number" ? v : aNumero(v);
+  return (n === null || isNaN(n)) ? null : Math.round(n * 10000) / 10000;
+}
+
+function esFilaCabecera(fila){
+  return txtCelda(fila, 2) === "Consecutivo";
+}
+function esFilaTituloArticulo(fila){
+  return txtCelda(fila, 2) === "Articulo" || txtCelda(fila, 2) === "Artículo";
+}
+
+function avisoRep(texto, clase){
+  const a = document.getElementById("avisoRep");
+  if (!a) return;
+  a.textContent = texto;
+  a.style.color = clase === "err" ? "#B03A3A" : "#1E8449";
+  a.style.fontWeight = "600";
+}
+
+function leerArchivoReporte(archivo){
+  if (typeof XLSX === "undefined")
+    return avisoRep("No se pudo cargar el lector de Excel. Cierre esta ventana, use ABRIR.bat y vuelva a intentar.", "err");
+  avisoRep("Leyendo el reporte…");
+  const lector = new FileReader();
+  lector.onload = ev => {
+    try {
+      const libro = XLSX.read(new Uint8Array(ev.target.result), {type:"array", cellDates:false});
+      let filas = [];
+      for (const nombre of libro.SheetNames){
+        const hoja = XLSX.utils.sheet_to_json(libro.Sheets[nombre], {header:1, raw:true, defval:""});
+        if (hoja.length > 1){ filas = hoja; break; }
+      }
+      if (!filas.length) return avisoRep("El archivo no tiene datos legibles.", "err");
+      avisoRep("Reporte leído: " + filas.length + " filas. Buscando las facturas…");
+      procesarReporte(filas);
+    } catch(e){ avisoRep("No se pudo leer el archivo: " + e.message, "err"); }
+  };
+  lector.readAsArrayBuffer(archivo);
+}
+
+function evaluarCabecerasReporte(cabeceras){
+  const norm = cabeceras.map(normalizar);
+  const tiene = (n) => norm.some(c => c && c.includes(n));
+  return {
+    consecutivo: tiene("consecutivo"),
+    articulo: tiene("articulo"),
+    kg: tiene("kg"),
+    precio: tiene("precio")
+  };
+}
+
+/* ─── aplicar imágenes a todas las facturas, existan o no ───────── */
+async function repartirImagenesATodas(filas){
+  if (!imagenesLote.length) return 0;
+  const todas = FACTURAS.concat(filas);
+  const usadas = new Set();
+  let puestas = 0;
+
+  // 1) por consecutivo en el nombre del archivo (lo más fiable)
+  const porNumero = {};
+  imagenesLote.forEach(i => { if (i.consecutivo) porNumero[i.consecutivo] = i; });
+  todas.forEach(f => {
+    const hit = porNumero[f.consecutivo];
+    if (hit && !usadas.has(hit.nombre)){
+      f.img = hit.dato;
+      usadas.add(hit.nombre);
+      puestas++;
+    }
+  });
+
+  // 2) las que sobraron: se reparten por orden entre las que no tienen imagen
+  const sobrantes = imagenesLote.filter(i => !usadas.has(i.nombre));
+  const sinImagen = todas.filter(f => !f.img);
+  for (let i = 0; i < sobrantes.length && i < sinImagen.length; i++){
+    sinImagen[i].img = sobrantes[i].dato;
+    usadas.add(sobrantes[i].nombre);
+    puestas++;
+  }
+
+  // Guardar las imágenes en la base de datos
+  if (puestas){
+    for (const f of todas) {
+      if (f.img) {
+        await guardarEnSucursal(f);
+      }
+    }
+  }
+  return puestas;
+}
+
+/* ─── el área de la ficha: detalle de compra con artículos ──────── */
+function buscarDetalle(consecutivo){
+  // 1) el detalle que traiga la propia factura (lo normal ahora)
+  const f = FACTURAS.find(x => x.consecutivo === consecutivo);
+  if (f && f.lineas && f.lineas.length) return {lineas:f.lineas};
+
+  // 2) el detalle incrustado, por consecutivo
+  if (typeof DETALLE !== "undefined" && DETALLE){
+    const d = DETALLE[consecutivo];
+    if (d && d.length) return {lineas:d};
+  }
+  return null;
+}
+
+function numL(v, campo){
+  if (v === null || v === undefined) return "—";
+  if (campo === "kg") return Number(v).toLocaleString("es-CR", {maximumFractionDigits:3}).replace(",", ".");
+  return pesos(v);
+}
+
+/* ─── conexiones de los campos de archivo ───────────────────────── */
+document.getElementById("archivo").addEventListener("change", e => {
+  if (e.target.files[0]){
+    avisarSucursalDelArchivo(e.target.files[0].name);
+    leerArchivo(e.target.files[0]);
+  }
+});
+function avisarSucursalDelArchivo(nombre){
+  const detectada = sucursalPorNombre(nombre);
+  const caja = document.getElementById("avisoSucursal");
+  if (!caja) return;
+  if (detectada && detectada !== sucursalActual){
+    caja.innerHTML = "&#9888; El archivo <b>" + nombre + "</b> parece ser de <b>" +
+      detectada + "</b>, y usted está en <b>" + sucursalActual +
+      "</b>. Las facturas se guardarán en " + sucursalActual + ".";
+    caja.style.display = "block";
+  } else if (detectada){
+    caja.innerHTML = "&#10004; El archivo <b>" + nombre + "</b> es de <b>" + detectada + "</b>.";
+    caja.style.display = "block";
+  } else {
+    caja.innerHTML = "El nombre del archivo no dice la sucursal; se guardará en <b>" +
+      sucursalActual + "</b>.";
+    caja.style.display = "block";
+  }
+}
+document.getElementById("f_img").addEventListener("change", e => {
+  if (e.target.files[0]) ponerImagen(e.target.files[0]);
+});
+const _imgsLote = document.getElementById("imgsLote");
+if (_imgsLote) _imgsLote.addEventListener("change", e => {
+  const archivos = Array.from(e.target.files || []);
+  if (!archivos.length) return;
+  imagenesLote = [];
+  let pendientes = archivos.length;
+  archivos.forEach(a => {
+    achicarImagen(a, 700, dato => {
+      const num = (a.name.match(/\d{20}/) || [])[0] || null;
+      if (dato) imagenesLote.push({nombre:a.name, dato, consecutivo:num});
+      if (--pendientes === 0){
+        const conNum = imagenesLote.filter(i => i.consecutivo).length;
+        { const _av = document.getElementById("avisoImgs"); if (_av) _av.innerHTML = "<b>" + imagenesLote.length +
+          "</b> imágenes cargadas · " + conNum + " traen el consecutivo en el nombre."; }
+        const bi = document.getElementById("btnImagenes");
+        if (bi) bi.style.display = "block";
+      }
+    });
+  });
+});
+
+/* arrastrar y soltar */
+function prepararZona(idZona, alSoltar){
+  const z = document.getElementById(idZona);
+  if (!z) return;
+  ["dragenter","dragover"].forEach(ev => z.addEventListener(ev, e => {
+    e.preventDefault(); z.style.background = "#DCE9F7";
+  }));
+  ["dragleave","drop"].forEach(ev => z.addEventListener(ev, e => {
+    e.preventDefault(); z.style.background = "#F2F7FC";
+  }));
+  z.addEventListener("drop", e => {
+    const a = e.dataTransfer.files[0];
+    if (a) alSoltar(a);
+  });
+}
+prepararZona("zonaSoltar", a => leerArchivo(a));
+prepararZona("zonaImg", a => ponerImagen(a));
+prepararZona("zonaReporte", a => leerArchivoReporte(a));
+prepararZona("zonaImgSolo", a => {
+  const dt = new DataTransfer();
+  dt.items.add(a);
+  const inp = document.getElementById("imgsSolo");
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event("change"));
+});
+
+document.getElementById("archivoRep").addEventListener("change", e => {
+  if (e.target.files[0]){
+    avisarSucursalDelArchivo(e.target.files[0].name);
+    leerArchivoReporte(e.target.files[0]);
+  }
+});
+
+/* ─── atajos de teclado y clics fuera ───────────────────────────── */
+document.getElementById("q").addEventListener("keydown", e => {
+  if (e.key === "Enter"){ buscar(); e.preventDefault(); }
+  if (e.key === "Escape"){ limpiar(); }
+});
+document.addEventListener("input", e => {
+  if (e.target && e.target.id === "f_cons"){
+    const t = tipoPorConsecutivo(e.target.value);
+    const sel = document.getElementById("f_tipo");
+    const doc = document.getElementById("f_doc");
+    if (t) sel.value = t;
+    if (!doc.value) doc.placeholder = numeroDeDocumento(e.target.value) || "1 - 19000";
+  }
+});
+document.addEventListener("click", e => {
+  if (!e.target.closest(".envuelve") && !e.target.closest(".lista"))
+    document.getElementById("lista").style.display = "none";
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){ cerrarIngreso(); cerrarImportar(); }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUCURSALES · cada una con su propio buscador y sus propios datos
+   ═══════════════════════════════════════════════════════════════════ */
+const SUCURSALES = ["TIENDA SOLARIUM", "CEDI LIBERIA"];
+let sucursalActual = null;
+let FACTURAS = [];   // lista viva de la sucursal abierta
+
+/* las 120 facturas base pertenecen a la sucursal cuyo nombre traiga el archivo.
+   Mientras no se sepa, quedan sin asignar y cada sucursal parte de las suyas. */
+const FACTURAS_TIENDA = [];
+const FACTURAS_CEDI   = [];
+
+/* Reparte las facturas cargadas y las del archivo entre las dos sucursales.
+   La sucursal sale de la columna «Sucursal» del reporte; si no viene, del
+   nombre del archivo de origen. */
+function sucursalDeFactura(f){
+  // 1) lo que el archivo declare en su campo sucursal
+  const s = String(f.sucursal || "").toUpperCase();
+  if (s.includes("CEDI")) return "CEDI LIBERIA";
+  if (s.includes("TIENDA") || s.includes("SOLARIUM")) return "TIENDA SOLARIUM";
+  // 2) la marca que se le puso al importarla
+  const m = String(f.marcaSucursal || "").toUpperCase();
+  if (m.includes("CEDI")) return "CEDI LIBERIA";
+  if (m.includes("TIENDA") || m.includes("SOLARIUM")) return "TIENDA SOLARIUM";
+  // 3) sin dato: no aparece en ninguna sucursal hasta que se importe con su origen
+  return null;
+}
+
+function repartirBase(){
+  FACTURAS_TIENDA.length = 0;
+  FACTURAS_CEDI.length = 0;
+
+  // lo que trae el propio archivo
+  (FACTURAS_BASE || []).forEach(f => {
+    const suc = sucursalDeFactura(f);
+    if (suc === "CEDI LIBERIA") FACTURAS_CEDI.push(f);
+    else if (suc === "TIENDA SOLARIUM") FACTURAS_TIENDA.push(f);
+    // sin sucursal identificada: no aparece en ninguna, no se mezcla
+  });
+
+  // En Electron las facturas ya están en SQLite; no hace falta leer localStorage aquí.
+  // La carga real se hace en entrarSucursal().
+}
+
+/* elige el logo y el reparto según el nombre del archivo o la carpeta */
+function sucursalPorNombre(nombreArchivo){
+  const t = (nombreArchivo || "").toUpperCase();
+  if (t.includes("CEDI") || t.includes("LIBERIA")) return "CEDI LIBERIA";
+  if (t.includes("TIENDA") || t.includes("SOLARIUM")) return "TIENDA SOLARIUM";
+  return null;
+}
+
+async function entrarSucursal(nombre){
+  sucursalActual = nombre;
+  document.getElementById("pantallaInicio").style.display = "none";
+  document.getElementById("pantallaBuscador").style.display = "block";
+  document.getElementById("q").value = "";
+  document.getElementById("lista").style.display = "none";
+
+  // cada sucursal arranca con sus propias facturas
+  repartirBase();
+  FACTURAS.length = 0;
+
+  // 1) Facturas base (si las hubiera)
+  const suyas = (nombre === "CEDI LIBERIA") ? FACTURAS_CEDI : FACTURAS_TIENDA;
+  suyas.forEach(f => FACTURAS.push(f));
+
+  // 2) Facturas guardadas en SQLite / localStorage
+  const guardadas = await leerNuevasDeSucursal();
+  guardadas.forEach(f => {
+    if (!FACTURAS.some(x => x.consecutivo === f.consecutivo)) FACTURAS.push(f);
+  });
+
+  // Detalle de compra embebido
+  if (typeof DETALLE !== "undefined" && DETALLE){
+    FACTURAS.forEach(f => {
+      const d = DETALLE[f.consecutivo];
+      if (d && !f.lineas) f.lineas = d;
+    });
+  }
+
+  // Actualizar etiqueta con el conteo real
+  const etiqueta = document.getElementById("etiquetaSucursal");
+  if (etiqueta) {
+    etiqueta.innerHTML = "&#128205; " + nombre + "   ·   " + FACTURAS.length + " facturas";
+  }
+  const titulo = document.getElementById("tituloSucursal");
+  if (titulo) titulo.textContent = "BUSCADOR · " + nombre;
+
+  pintarFiltros();
+  await pintarNuevas();
+  vaciar();
+  aplicarFiltro();
+  await actualizarContadoresInicio();
+  window.scrollTo(0, 0);
+
+  if (!FACTURAS.length){
+    document.getElementById("estado").innerHTML =
+      "<b>" + nombre + "</b> todavía no tiene facturas cargadas. " +
+      "Use <b>SUBIR DATOS (EXCEL)</b> para cargar el reporte de esta sucursal.";
+  }
+}
+
+function volverInicio(){
+  document.getElementById("pantallaBuscador").style.display = "none";
+  document.getElementById("pantallaInicio").style.display = "flex";
+  actualizarContadoresInicio();
+  window.scrollTo(0, 0);
+}
+
+async function actualizarContadoresInicio(){
+  let t = FACTURAS_TIENDA.length, c = FACTURAS_CEDI.length;
+
+  try {
+    const conteos = await contarPorSucursal();
+    t = (conteos["TIENDA SOLARIUM"] || 0) + FACTURAS_TIENDA.length;
+    c = (conteos["CEDI LIBERIA"] || 0) + FACTURAS_CEDI.length;
+  } catch (e) { console.error(e); }
+
+  const dt = document.getElementById("datosTienda");
+  const dc = document.getElementById("datosCedi");
+  if (dt) dt.textContent = t ? (t + " facturas cargadas") : "Sin facturas cargadas todavía";
+  if (dc) dc.textContent = c ? (c + " facturas cargadas") : "Sin facturas cargadas todavía";
+}
+
+/* El botón de importar pregunta a qué sucursal pertenece el archivo,
+   usando el nombre del archivo. */
+function sucursalDelArchivoCargado(nombreArchivo){
+  const detectada = sucursalPorNombre(nombreArchivo);
+  if (detectada) return detectada;
+  return sucursalActual;
+}
+/* ═══════════════════════════════════════════════════════════════════
+   ENLACE DE DOCUMENTOS + VERIFICACIÓN
+   Documento A = base de descuentos (fecha, cliente, descuento, total)
+   Documento B = reporte desglosado (artículos, impuestos, pago)
+   Se unen por el consecutivo y se complementan en cualquier orden.
+   ═══════════════════════════════════════════════════════════════════ */
+const rd = n => Math.round(n * 100) / 100;
+const TOL = 1;   // tolerancia de ₡1 por redondeos
+function esc(s){ return String(s === null || s === undefined ? "" : s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function fuentesDe(f){
+  const u = (f.extra || {}).fuentes;
+  return u ? u : {doc: true, rep: !!(f.lineas && f.lineas.length)};
+}
+function lineasDe(f){
+  const L = (f.lineas && f.lineas.length) ? f.lineas
+          : ((typeof DETALLE !== "undefined" && DETALLE[f.consecutivo]) || []);
+  return L.map(l => ({
+    articulo: l.articulo || l.a || "", kg: l.kg !== undefined ? l.kg : l.k,
+    precio: l.precio !== undefined ? l.precio : l.p, subtotal: l.subtotal,
+    impuesto: l.impuesto !== undefined ? l.impuesto : l.i,
+    excento: l.excento, gravado: l.gravado,
+    total_linea: l.total_linea !== undefined ? l.total_linea : l.t }));
+}
+
+/* une lo que ya existe con lo que trae el archivo nuevo */
+const CAMPOS_DOC = ["documento","cliente","fecha","tipo","subtotal","descuento","pct","total","obs"];
+function fusionar(e, n){
+  if (!e){
+    const x = Object.assign({}, n);
+    x.extra = Object.assign({}, n.extra || {}, {fuentes: {doc: n.origen === "doc", rep: n.origen === "rep"}});
+    delete x.origen; delete x.repetida; return x;
+  }
+  const x = Object.assign({}, e); delete x._v;
+  x.extra = Object.assign({}, e.extra || {});
+  const fu = Object.assign({}, fuentesDe(e));
+  if (n.origen === "doc"){
+    CAMPOS_DOC.forEach(k => { x[k] = n[k]; });          // el documento manda en fecha y descuento
+    fu.doc = true;
+  } else {
+    x.lineas = n.lineas; Object.assign(x.extra, n.extra);  // el reporte aporta artículos e impuestos
+    if (!fu.doc) CAMPOS_DOC.forEach(k => { x[k] = n[k]; });
+    else if (!x.fecha && n.fecha) x.fecha = n.fecha;
+    fu.rep = true;
+  }
+  x.extra.fuentes = fu;
+  if (n.img) x.img = n.img;
+  return x;
+}
+
+/* calcula todo desde los artículos y compara contra lo declarado */
+function analizar(f){
+  const x = f.extra || {}, fu = fuentesDe(f), L = lineasDe(f);
+  const r = {prods: [], porIdx: {}, tasas: {}, bruto: 0, neto: 0, rebaja: 0, iva: 0, exento: 0, checks: [], fu};
+  L.forEach((l, i) => {
+    const kg = +l.kg, pr = +l.precio, sub = (l.subtotal === null || l.subtotal === undefined) ? NaN : +l.subtotal;
+    const bruto = (kg > 0 && pr > 0) ? kg * pr : (isNaN(sub) ? 0 : sub);
+    const s = isNaN(sub) ? bruto : sub, reb = bruto - s;
+    r.bruto += bruto; r.neto += s;
+    const p = +l.impuesto || 0, grav = (l.gravado === null || l.gravado === undefined) ? s : +l.gravado;
+    const t = r.tasas[p] = r.tasas[p] || {base: 0, imp: 0};
+    t.base += grav; t.imp += grav * p / 100; r.iva += grav * p / 100; r.exento += +l.excento || 0;
+    if (reb > 0.05){
+      r.rebaja += reb;
+      const pr2 = {i, articulo: l.articulo, kg, precio: pr, bruto, sub: s, rebaja: reb, pct: bruto ? reb / bruto * 100 : 0};
+      r.prods.push(pr2); r.porIdx[i] = pr2;
+    }
+  });
+  const ck = (ok, etq, det) => r.checks.push({ok, etq, det});
+  const dec = Number(f.descuento) || 0, hay = L.length > 0;
+  if (hay){
+    ck(Math.abs(dec - r.rebaja) <= TOL,
+      fu.doc ? "Descuento del documento = rebajas por artículo" : "Descuento de la cabecera = rebajas por artículo",
+      "declarado " + pesos(dec) + " · calculado " + pesos(rd(r.rebaja)) +
+      (Math.abs(dec - r.rebaja) > TOL ? " · diferencia " + pesos(rd(dec - r.rebaja)) : ""));
+    if (x.iva !== null && x.iva !== undefined)
+      ck(Math.abs(r.iva - x.iva) <= TOL, "Impuesto de los artículos = IV del reporte",
+        "calculado " + pesos(rd(r.iva)) + " · reporte " + pesos(x.iva));
+    if (x.iva1 !== null && x.iva1 !== undefined && r.tasas[1])
+      ck(Math.abs(r.tasas[1].imp - x.iva1) <= TOL, "IV al 1 % de los artículos = IV al 1 % del reporte",
+        "calculado " + pesos(rd(r.tasas[1].imp)) + " · reporte " + pesos(x.iva1));
+    if (x.totCab !== null && x.totCab !== undefined){
+      const sc = x.subCab !== null && x.subCab !== undefined ? x.subCab : r.bruto;
+      const esp = rd(sc - dec + (x.iva || 0));
+      ck(Math.abs(esp - x.totCab) <= TOL, "Subtotal − descuento + IV = total cobrado",
+        pesos(sc) + " − " + pesos(dec) + " + " + pesos(x.iva || 0) + " = " + pesos(esp) + " · total " + pesos(x.totCab));
+      const st = L.reduce((a, l) => a + (+l.total_linea || 0), 0);
+      if (st) ck(Math.abs(st - x.totCab) <= TOL, "Suma de totales por línea = total cobrado",
+        "suma " + pesos(rd(st)) + " · total " + pesos(x.totCab));
+    }
+  }
+  if (fu.doc && fu.rep && x.totCab !== null && x.totCab !== undefined){
+    ck(Math.abs((f.total || 0) - x.totCab) <= TOL, "Total del documento = total del reporte",
+      pesos(f.total) + " vs " + pesos(x.totCab));
+    if (x.subCab !== null && x.subCab !== undefined)
+      ck(Math.abs((f.subtotal || 0) - x.subCab) <= TOL, "Subtotal del documento = subtotal del reporte",
+        pesos(f.subtotal) + " vs " + pesos(x.subCab));
+  }
+  if (!hay) ck(null, "Sin artículos ni impuestos", "cargue el reporte desglosado para completar y verificar esta factura");
+  if (hay && !fu.doc) ck(null, "Sin documento de descuentos", "fecha y descuento oficial sin confirmar: cargue el documento");
+  r.errores = r.checks.filter(c => c.ok === false).length;
+  r.origen = r.prods.length ? "articulos" : (dec > 0.005 ? "global" : "ninguno");
+  return r;
+}
+function ver(f){ return f._v || (f._v = analizar(f)); }
+
+function resumenEnlace(){
+  let ok = 0, sd = 0, sr = 0, dif = 0;
+  FACTURAS.forEach(f => { const u = fuentesDe(f);
+    if (u.doc && u.rep) ok++; else if (u.doc) sd++; else sr++;
+    if (ver(f).errores) dif++; });
+  return " · <b>" + ok + "</b> enlazadas · " + sd + " solo documento · " + sr + " solo reporte" +
+    (dif ? " · <b style='color:#C0392B'>⚠ " + dif + " con diferencias</b>" : "");
+}
+
+/* texto reutilizable: la ficha en pantalla, la imagen y el portapapeles */
+function filasFicha(f){
+  const v = ver(f), x = f.extra || {}, fu = v.fu;
+  const F = [["Documento", f.documento], ["Fecha", f.fecha || "—"], ["Consecutivo", f.consecutivo],
+    ["Tipo de documento", f.tipo], ["Cliente", f.cliente]];
+  if (x.pago) F.push(["Pago", x.pago + (x.tarjeta ? " · tarjeta " + x.tarjeta : "") + (x.aut ? " · aut. " + x.aut : "")]);
+  F.push(["Subtotal", pesos(f.subtotal)], ["% de descuento", pct(f.pct)], ["Descuento", pesos(f.descuento)]);
+  if (v.prods.length) F.push(["Origen del descuento", v.prods.map(p => p.articulo + " (−" + pesos(rd(p.rebaja)) + ", " +
+    p.pct.toFixed(1).replace(".", ",") + " %)").join(" · ")]);
+  else if ((f.descuento || 0) > 0.005) F.push(["Origen del descuento", "Global de la factura (no está en los artículos)"]);
+  Object.keys(v.tasas).map(Number).sort((a, b) => b - a).forEach(p => { if (p > 0 && v.tasas[p].base)
+    F.push(["Ventas al " + p + " %", pesos(rd(v.tasas[p].base)) + "  ·  IV " + pesos(rd(v.tasas[p].imp))]); });
+  if (x.iva !== null && x.iva !== undefined) F.push(["IV total", pesos(x.iva)]);
+  F.push(["Total cobrado", pesos(f.total)]);
+  lineasDe(f).forEach((l, i) => F.push(["Artículo " + (i + 1), l.articulo + " · " + numL(l.kg, "kg") + " kg × " + pesos(l.precio) +
+    " = " + pesos(l.subtotal) + (l.impuesto !== null && l.impuesto !== undefined ? " · IV " + l.impuesto + " %" : "") +
+    " · total " + pesos(l.total_linea)]));
+  v.checks.forEach(c => F.push([c.ok === true ? "✔ Verificado" : c.ok === false ? "✖ Diferencia" : "ⓘ Aviso", c.etq + " — " + c.det]));
+  F.push(["Fuentes", (fu.doc ? "documento de descuentos" : "—") + " + " + (fu.rep ? "reporte desglosado" : "—")]);
+  F.push(["Observaciones", f.obs || "—"]);
+  return F;
+}
+
+/* panel izquierdo: se agrega a la ficha lo nuevo */
+const _pintar0 = pintar;
+pintar = function(f){
+  _pintar0(f);
+  const v = ver(f), x = f.extra || {}, fu = v.fu;
+  const fila = (a, b) => '<div class="fila"><span>' + a + '</span><span>' + b + '</span></div>';
+  const ins = (t, c) => '<span style="display:inline-block;margin:0 0 0 5px;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:800;' +
+    (c ? 'background:#E3F2E6;color:#1E8449' : 'background:#EEF2F6;color:#8A949E;text-decoration:line-through') + '">' + t + '</span>';
+  let h = fila("Enlace", ins("Documento", fu.doc) + ins("Reporte", fu.rep));
+  if (x.pago) h += fila("Pago", esc(x.pago) + (x.tarjeta ? " · " + esc(x.tarjeta) : ""));
+  Object.keys(v.tasas).map(Number).sort((a, b) => b - a).forEach(p => { if (p > 0 && v.tasas[p].base)
+    h += fila("Ventas al " + p + " %", pesos(rd(v.tasas[p].base))) + fila("IV al " + p + " %", pesos(rd(v.tasas[p].imp))); });
+  if (x.iva !== null && x.iva !== undefined) h += fila("IV total", "<b>" + pesos(x.iva) + "</b>");
+  if (v.origen !== "ninguno"){
+    h += '<div style="background:#FFF5F5;border-left:4px solid #C0392B;padding:10px;border-radius:6px;margin:8px 0">' +
+      '<div style="color:#C0392B;font-weight:800;font-size:12.5px">⚠ DE DÓNDE VIENE EL DESCUENTO</div>' +
+      (v.origen === "articulos" ? v.prods.map(p => '<div style="font-size:12.5px;color:#922B21;margin-top:6px;line-height:1.5"><b>' + esc(p.articulo) + '</b><br>' +
+        numL(p.kg, "kg") + ' kg × ' + pesos(p.precio) + ' = <b>' + pesos(rd(p.bruto)) + '</b> → cobrado <b>' + pesos(rd(p.sub)) +
+        '</b> <b style="color:#C0392B">(−' + pesos(rd(p.rebaja)) + ' · ' + p.pct.toFixed(1).replace(".", ",") + ' %)</b></div>').join("") +
+        '<div style="font-size:12px;color:#5A6874;margin-top:6px">Total calculado por artículos: <b>−' + pesos(rd(v.rebaja)) + '</b></div>'
+      : '<div style="font-size:12.5px;color:#922B21;margin-top:6px">Descuento global de ' + pesos(f.descuento) +
+        ': no se ve rebajado en ningún artículo' + (fu.rep ? '.' : ' (falta el reporte desglosado para ubicarlo).') + '</div>') + '</div>';
+  }
+  h += '<div style="border:1px solid #DCE9F7;border-radius:8px;padding:9px 11px;margin-top:8px"><div style="font-weight:800;font-size:12px;color:#134074;margin-bottom:4px">VERIFICACIÓN AUTOMÁTICA</div>' +
+    v.checks.map(c => '<div style="font-size:12px;line-height:1.45;padding:3px 0;color:' + (c.ok === false ? "#C0392B" : c.ok ? "#1E8449" : "#8A6410") + '">' +
+      (c.ok === true ? "✔ " : c.ok === false ? "✖ " : "ⓘ ") + '<b>' + c.etq + '</b><br><span style="color:#5A6874;margin-left:16px">' + c.det + '</span></div>').join("") + '</div>';
+  document.getElementById("datos").innerHTML += h;
+  const t = document.getElementById("total");
+  const rojo = (f.descuento || 0) > 0.005 || v.errores;
+  t.style.background = rojo ? "#FDEDEC" : ""; t.style.color = rojo ? "#C0392B" : "";
+};
+
+/* panel derecho: detalle de compra con impuestos como en el Excel */
+function bloqueDetalle(f, det){
+  const v = ver(f), x = f.extra || {}, L = lineasDe(f), fu = v.fu;
+  const td = (c, s) => '<td style="padding:7px 8px;' + (s || "") + '">' + c + '</td>';
+  const th = (c, al) => '<th style="padding:7px 8px;text-align:' + al + ';color:#134074">' + c + '</th>';
+  const fl = (a, b, st) => '<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;color:#5A6874"><span>' + a +
+    '</span><span style="font-weight:700;color:#13315C;' + (st || "") + '">' + b + '</span></div>';
+  let h = '<div style="width:100%;max-width:600px"><div style="background:#204F79;color:#fff;border-radius:10px 10px 0 0;padding:13px 16px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">' +
+    '<div><div style="font-weight:800;font-size:15px">DETALLE DE COMPRA</div><div style="font-size:11px;color:#BBD4EA;margin-top:2px">' +
+    esc(x.sucRep || f.sucursal || "") + (x.caja ? " · Caja " + esc(x.caja) : "") + '</div></div><div style="font-size:12px;color:#E8F1F9">' + esc(f.tipo) + '</div></div>' +
+    '<div style="border:1px solid #DCE9F7;border-top:0;padding:12px 16px;background:#fff"><div style="font-size:12px;color:#5A6874;line-height:1.7">Consecutivo <b style="color:#13315C">' +
+    f.consecutivo + '</b> &nbsp; Fecha <b style="color:#13315C">' + (f.fecha || "—") + '</b><br>Documento <b style="color:#13315C">' + esc(f.documento) +
+    '</b> &nbsp; Pago <b style="color:#13315C">' + esc(x.pago || "—") + '</b><br>Cliente <b style="color:#13315C">' + esc(f.cliente) + '</b></div>';
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:9px"><thead><tr style="background:#DCE9F7">' +
+    th("Artículo", "left") + th("Kg", "right") + th("Precio", "right") + th("Subtotal", "right") + th("IV", "center") + th("Total", "right") + '</tr></thead><tbody>';
+  L.forEach((l, i) => { const rb = v.porIdx[i];
+    h += '<tr style="' + (rb ? "background:#FDEDEC;box-shadow:inset 4px 0 0 #C0392B" : "background:" + (i % 2 ? "#F7FAFD" : "#fff")) + '">' +
+      td(rb ? '<b style="color:#922B21">' + esc(l.articulo) + '</b><br><small style="color:#C0392B;font-weight:700">Vale ' + pesos(rd(rb.bruto)) +
+        ' → rebaja −' + pesos(rd(rb.rebaja)) + ' (' + rb.pct.toFixed(1).replace(".", ",") + ' %)</small>' : esc(l.articulo)) +
+      td(numL(l.kg, "kg"), "text-align:right") + td(pesos(l.precio), "text-align:right") +
+      td(pesos(l.subtotal), "text-align:right;font-weight:" + (rb ? "800;color:#C0392B" : "600")) +
+      td(l.impuesto === null || l.impuesto === undefined ? "—" : l.impuesto + " %", "text-align:center;color:#5A6874") +
+      td(pesos(l.total_linea), "text-align:right;font-weight:700") + '</tr>'; });
+  h += '</tbody></table></div>';
+  const sc = x.subCab !== null && x.subCab !== undefined ? x.subCab : f.subtotal;
+  h += '<div style="margin-top:10px;border-top:1px solid #DCE9F7;padding-top:8px">' + fl("Subtotal", pesos(sc)) +
+    ((f.descuento || 0) > 0.005 ? fl("Descuento (" + pct(f.pct) + ") · " + (fu.doc ? "documento" : "reporte"), "−" + pesos(f.descuento), "color:#C0392B") : "") +
+    '<div style="margin:6px 0;padding:7px 9px;background:#F2F7FC;border-radius:7px">' +
+    Object.keys(v.tasas).map(Number).sort((a, b) => b - a).map(p => p > 0 && v.tasas[p].base ?
+      fl("Ventas al " + p + " %", pesos(rd(v.tasas[p].base))) + fl("IV al " + p + " %", pesos(rd(v.tasas[p].imp))) : "").join("") +
+    (v.exento ? fl("Exento", pesos(rd(v.exento))) : "") + fl("IV total", pesos(x.iva !== null && x.iva !== undefined ? x.iva : rd(v.iva))) + '</div>' +
+    '<div style="display:flex;justify-content:space-between;padding:7px 0 2px"><b style="font-size:14px;color:#13315C">Total cobrado</b><b style="font-size:15.5px;color:#13315C">' + pesos(f.total) + '</b></div></div>' +
+    '<div style="font-size:10.5px;color:#8A949E;margin-top:9px">' + (fu.doc ? "Descuento y total del documento" : "Montos del reporte") + ' · artículos e impuestos del reporte desglosado · ' +
+    (v.errores ? '<b style="color:#C0392B">' + v.errores + ' diferencia(s)</b>' : "verificado") + '</div></div></div>';
+  return h;
+}
+
+/* ─── lector del reporte desglosado (columnas reales del .xls del sistema) ─── */
+function leerReporte(filas){
+  const hs = []; filas.forEach((f, i) => { if (esFilaCabecera(f)) hs.push(i); });
+  if (!hs.length) return {error: "No encontré los bloques de factura. Este lector espera el reporte desglosado, con la fila «Consecutivo» y las filas de «Articulo»."};
+  const out = [];
+  hs.forEach((i0, k) => {
+    const fin = k + 1 < hs.length ? hs[k + 1] : filas.length; let id = -1;
+    for (let i = i0 + 1; i < Math.min(fin, i0 + 5); i++) if (txtCelda(filas[i], 2).replace(/\D/g, "").length === 20){ id = i; break; }
+    if (id < 0) return;
+    const f = filas[id], cons = txtCelda(f, 2).replace(/\D/g, ""), lineas = [];
+    for (let i = id + 1; i < fin; i++){
+      if (!esFilaTituloArticulo(filas[i])) continue;
+      const v = filas[i + 1]; if (!v) continue;
+      const art = txtCelda(v, 2); if (!art || esFilaTituloArticulo(v)) continue;
+      lineas.push({articulo: art, kg: numCelda(v, 6), precio: numCelda(v, 13), subtotal: numCelda(v, 17),
+        impuesto: numCelda(v, 20), excento: numCelda(v, 28), gravado: numCelda(v, 32), total_linea: numCelda(v, 37)});
+    }
+    const fx = numCelda(f, 23);   // la fecha sólo vale si es un serial real (no el 1 de «sin fecha»)
+    out.push({consecutivo: cons, cliente: txtCelda(f, 12), fecha: fx && fx > 30000 ? fechaDeExcel(fx) : "", lineas,
+      subCab: numCelda(f, 27), totCab: numCelda(f, 60), iva: numCelda(f, 30),
+      extra: {iva: numCelda(f, 30), iva1: numCelda(f, 34), v1: numCelda(f, 38), v13: numCelda(f, 41),
+        pago: txtCelda(f, 45), tarjeta: txtCelda(f, 48), aut: txtCelda(f, 51), cheque: txtCelda(f, 54),
+        caja: txtCelda(f, 8), sucRep: txtCelda(f, 57), subCab: numCelda(f, 27), totCab: numCelda(f, 60)}});
+  });
+  return out.length ? {facturas: out} : {error: "Encontré bloques, pero ninguno con un consecutivo de 20 dígitos."};
+}
+function procesarReporte(filas){
+  const res = leerReporte(filas); if (res.error) return avisoRep(res.error, "err");
+  filasImportadas = res.facturas.map(r => {
+    const sub = r.subCab || 0, tot = r.totCab !== null ? r.totCab : sub;
+    const desc = Math.max(0, rd(sub - (tot - (r.iva || 0))));
+    return {origen: "rep", documento: numeroDeDocumento(r.consecutivo), consecutivo: r.consecutivo,
+      cliente: (r.cliente || "(sin nombre)").split("|")[0].trim(), fecha: r.fecha, tipo: tipoPorConsecutivo(r.consecutivo),
+      subtotal: rd(sub), descuento: desc, pct: sub ? desc / sub : 0, total: rd(tot),
+      obs: r.lineas.length + " artículo(s) · reporte desglosado", lineas: r.lineas, img: null,
+      ingresada: new Date().toISOString(), extra: r.extra};
+  });
+  reporteLeido = filasImportadas; previaUnida();
+}
+
+/* ─── vista previa común a los dos documentos ─── */
+function previaUnida(){
+  let nu = 0, en = 0, dif = 0;
+  const filas = filasImportadas.map(n => {
+    const e = FACTURAS.find(x => x.consecutivo === n.consecutivo) || null;
+    const m = fusionar(e, n), v = analizar(m);
+    if (!e) nu++; else en++; if (v.errores) dif++;
+    return {n, e, m, v};
+  });
+  const chip = (t, bg, c) => '<span style="background:' + bg + ';color:' + c + ';padding:9px 14px;border-radius:9px;font-weight:700">' + t + '</span>';
+  document.getElementById("resumenImp").innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+    chip(nu + " nuevas", "#E3F2E6", "#1E8449") + chip(en + " se enlazan con lo que ya hay", "#DCE9F7", "#134074") +
+    (dif ? chip("⚠ " + dif + " con diferencias", "#FDECEC", "#B03A3A") : chip("✔ todo cuadra", "#E3F2E6", "#1E8449")) + '</div>';
+  const th = (t, a) => '<th style="padding:8px;text-align:' + (a || "left") + '">' + t + '</th>';
+  let h = '<thead><tr style="position:sticky;top:0;background:#DCE9F7">' + th("Consecutivo") + th("Cliente") + th("Qué pasa") +
+    th("Descuento", "right") + th("IV", "right") + th("Total", "right") + th("Verif.", "center") + '</tr></thead><tbody>';
+  filas.slice(0, 300).forEach(({n, e, m, v}) => {
+    const que = !e ? "NUEVA" : (n.origen === "doc" ? (fuentesDe(e).doc ? "ACTUALIZA el documento" : "COMPLETA: suma descuento y fecha")
+                                                     : (fuentesDe(e).rep ? "ACTUALIZA el reporte" : "COMPLETA: suma artículos e impuestos"));
+    h += '<tr style="background:' + (!e ? "#fff" : "#F2F7FC") + '"><td style="padding:7px 8px;font-family:Consolas,monospace">' + m.consecutivo + '</td>' +
+      '<td style="padding:7px 8px">' + esc(m.cliente) + '</td><td style="padding:7px 8px;font-weight:700;color:' + (!e ? "#1E8449" : "#134074") + '">' + que + '</td>' +
+      '<td style="padding:7px 8px;text-align:right">' + pesos(m.descuento) + '</td><td style="padding:7px 8px;text-align:right">' +
+      (m.extra && m.extra.iva !== null && m.extra.iva !== undefined ? pesos(m.extra.iva) : "—") + '</td><td style="padding:7px 8px;text-align:right">' + pesos(m.total) + '</td>' +
+      '<td style="padding:7px 8px;text-align:center;font-weight:800;color:' + (v.errores ? "#C0392B" : "#1E8449") + '" title="' + esc(v.checks.filter(c => c.ok === false).map(c => c.etq).join(" | ")) + '">' +
+      (v.errores ? "✖ " + v.errores : "✔") + '</td></tr>';
+  });
+  document.getElementById("tablaPrev").innerHTML = h + '</tbody>';
+  document.getElementById("notaPrev").innerHTML = 'Las filas en azul <b>ya existen</b>: no se duplican, se <b>enlazan</b> y se completan con lo que trae este archivo. ' +
+    'Pase el cursor sobre ✖ para ver qué no cuadra.';
+  document.getElementById("paso1").style.display = "none"; document.getElementById("paso2").style.display = "block";
+  document.getElementById("btnVolver").style.display = "block";
+  const b = document.getElementById("btnImportar"); b.style.display = "block"; b.disabled = !filas.length;
+  b.textContent = "IMPORTAR Y ENLAZAR (" + filas.length + ")";
+}
+function mostrarPrevia(){ previaUnida(); }
+
+async function confirmarImportar(){
+  let nu = 0, en = 0;
+  for (const n of filasImportadas){
+    const e = FACTURAS.find(x => x.consecutivo === n.consecutivo) || null;
+    const m = fusionar(e, n);
+    m.sucursal = sucursalActual; m.marcaSucursal = sucursalActual;   // la sucursal siempre es la abierta
+    m.ingresada = m.ingresada || new Date().toISOString();
+    await guardarEnSucursal(m, true);
+    if (e){ Object.assign(e, m); e._v = null; en++; } else { FACTURAS.push(m); nu++; }
+  }
+  const imgs = await repartirImagenesATodas([]);
+  await persistDatabase(); await pintarNuevas(); pintarFiltros(); aplicarFiltro();
+  if (fichaActual){ const x = FACTURAS.find(z => z.consecutivo === fichaActual.consecutivo); if (x) pintar(x); }
+  avisoImp("Listo: " + nu + " nuevas y " + en + " enlazadas con datos existentes" + (imgs ? " · " + imgs + " imágenes" : "") + ".", "ok");
+  document.getElementById("paso2").style.display = "none"; document.getElementById("btnImportar").style.display = "none";
+  document.getElementById("btnVolver").style.display = "none"; setTimeout(cerrarImportar, 1700);
+}
+
+/* ─── modo servidor: varias personas, una sola base ─────────────── */
+async function apiGet(u){ const r = await fetch(u, {cache: "no-store"}); if (!r.ok) throw new Error("Servidor: " + r.status); return r.json(); }
+async function apiSend(m, u, b){
+  const r = await fetch(u, {method: m, headers: {"Content-Type": "application/json"}, body: b ? JSON.stringify(b) : undefined});
+  if (!r.ok) throw new Error("Servidor: " + r.status); return r.json();
+}
+let _huella = "";
+async function refrescarServidor(forzar){
+  if (!MODO_SERVIDOR || !sucursalActual || document.querySelector(".fondo.abierto")) return;
+  try {
+    const rows = await apiGet("api/facturas?sucursal=" + encodeURIComponent(sucursalActual));
+    const h = rows.length + "|" + rows.map(r => r.consecutivo + r.updated_at).join("");
+    if (!forzar && h === _huella) return;
+    _huella = h;
+    const act = fichaActual && fichaActual.consecutivo;
+    FACTURAS.length = 0; rows.forEach(r => FACTURAS.push(rowToFactura(r)));
+    const e = document.getElementById("etiquetaSucursal");
+    if (e) e.innerHTML = "&#128205; " + sucursalActual + "   ·   " + FACTURAS.length + " facturas   ·   &#127760; compartido";
+    pintarFiltros(); await pintarNuevas();
+    if (!document.getElementById("q").value) aplicarFiltro();
+    if (act){ const x = FACTURAS.find(z => z.consecutivo === act); if (x) pintar(x); }
+  } catch (e) { console.warn("No se pudo actualizar:", e); }
+}
+setInterval(() => refrescarServidor(false), 15000);
+window.addEventListener("focus", () => refrescarServidor(false));
+
+/* ─── arranque ──────────────────────────────────────────────────── */
+// Al abrir, se muestra la pantalla con las dos sucursales.
+
+(async function arranque() {
+  try {
+    await initSQL();
+  } catch (e) {
+    console.error("Error iniciando SQLite:", e);
+  }
+  repartirBase();
+  FACTURAS.length = 0;
+  await actualizarContadoresInicio();
+  document.getElementById("pantallaInicio").style.display = "flex";
+  document.getElementById("pantallaBuscador").style.display = "none";
+  pintarFiltros();
+  limpiar();
+})();
+</script>
+</body>
+</html>

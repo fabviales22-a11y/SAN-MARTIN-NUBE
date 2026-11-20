@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: facturas-san-martin
+    runtime: docker
+    plan: starter
+    disk:
+      name: datos
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: NUBE
+        value: "1"
+      - key: DATOS
+        value: /data
+      - key: CLAVE
+        sync: false

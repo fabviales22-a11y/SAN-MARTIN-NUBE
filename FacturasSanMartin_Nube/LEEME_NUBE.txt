@@ -1,0 +1,22 @@
+FACTURAS SAN MARTIN EN LA NUBE (HTTPS, acceso desde cualquier lugar)
+
+REQUISITOS DEL SERVICIO: que ejecute Docker y tenga un DISCO PERSISTENTE (si no, los
+datos se pierden al reiniciar). La clave es obligatoria: el servidor no arranca sin ella.
+
+OPCION A - Render.com (la mas simple)
+ 1. Suba esta carpeta a un repositorio privado de GitHub.
+ 2. En Render: New > Blueprint > elija el repositorio (usa render.yaml).
+ 3. Cuando pida CLAVE, escriba la clave que usara su equipo.
+ 4. Al terminar le da un enlace https://facturas-san-martin.onrender.com (u otro).
+    Los planes con disco persistente son de pago.
+
+OPCION B - Un servidor propio (VPS) con Docker
+    docker build -t facturas .
+    docker run -d --restart=always -p 8765:8765 -e CLAVE=su_clave -v facturas_datos:/data facturas
+ Para HTTPS ponga delante Caddy o Nginx (o un tunel de Cloudflare).
+
+PASAR SUS DATOS: abra el enlace, escriba cualquier usuario y la clave, entre a una
+sucursal > "Importar base de datos" > su archivo .db exportado.
+
+RESPALDOS: diarios en /data/respaldos (ultimos 14). Descargue uno propio de vez en cuando
+con "Exportar base de datos".
